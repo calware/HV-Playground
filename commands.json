@@ -1,0 +1,14 @@
+{
+  "commands": {
+    "Revert": {
+      "fileName": "cmd.exe",
+      "workingDirectory": ".",
+      "arguments": "/c scripts\\Revert.bat"
+    },
+    "UploadExecute": {
+      "fileName": "cmd.exe",
+      "workingDirectory": ".",
+      "arguments": "/c scripts\\UploadExecute.bat"
+    }
+  }
+}

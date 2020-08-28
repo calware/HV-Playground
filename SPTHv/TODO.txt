@@ -1,0 +1,46 @@
+TODO:
+
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+	- make our VMCS & VMXON Region structures so that we're not casting to PUINT32 to set the revision identifier
+	- make CR0/4 structures via CPU.h
+
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
+	- get rid of LP_INFO structure, and just use the stack for our variables
+	- create an allocation which returns a VMX_ADDRESS
+		- has param which specifies that the allocation must be in contiguous memory
+	- create sub function for setting up the VMCS host state
+	- create sub function for setting up the VMCS guest state
+	- create sub function for setting up each of the VMX controls
+	- create very simple assembly stub which saves state & redirects to our handler funciton
+		- should probably put this in a different assembly file linked extern'd via the VMX header
+	- instead of creating a memory buffer for the guest code, direct the GUEST_RIP to 
+	  a specially-created no-return assembly function that will hold our test guest code
+	- make sure everything has SDM citations (including the important ones for that ReadAR function we wrote)
+		- maybe compare it against my original assembly call to see if any of those registers actually need to be set to unusable
+
+	- strip definitions from those other headers files that create unnecessary bloat .?
+		- for instance, we don't need all of those HIGH vs FULL VMCS codes
+		- also the ones we will never use we probably shouldn't bother with
+
+	- also include links to the SDM pages that explain the requirements for the host/guest state and whatnot
+		- those were annoying to have to find manually after sina/daax bascially just said trust me
+
+	- better explain that FIX_CTRL_BITS macro because that shit is confusing with all of my revisions
+		- see if we can end up using my original one
+
+! CHECK IF LOOPING INFINITELY IN OUR EXIT HANDLER STALLS THE MACHINE IF WE DON'T LOWER THE
+IRQL ; for instance, use KeSetSystemAffinityThread & see if our exits effect all LPs regardless of whether
+or not they are virtualized
+	- depending on whether or not this is true, we can use globals for holding guest state information
+	on VM exits
+	- update: KeSetSystemThreadAffinity doesn't stall the whole computer, so we can assume
+
+	- after we commit the above changes & get this into a git repo, we should then go on and create some other repos and/or branches
+		- we're looking to test simple memory reads & see how EPT can change the results of these operations
+		- we're also looking to do vm-entry operations via breaking at a HLT instruction, getting the instruction length, adding it to RIP, and using vmresume
+		- 
