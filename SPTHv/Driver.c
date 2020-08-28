@@ -248,8 +248,8 @@ _SetEntryControls()
 
 NTSTATUS
 DriverEntry(
-	PDRIVER_OBJECT DriverObject,
-	PUNICODE_STRING RegistryPath
+	_In_ PDRIVER_OBJECT DriverObject,
+	_In_ PUNICODE_STRING RegistryPath
 	)
 {
 	KIRQL PreviousIRQL;

@@ -31,8 +31,7 @@
  *		[A.2] "Reserved Controls and Default Settings" (pg.4510)
  */
 
-// #define _FIX_CTRL_BITS(v, f) ( (v | (UINT32)f) & (UINT32)(f >> 32) )
-#define _FIX_CTRL_BITS(v, f) ( (v & (UINT32)(f >> 32)) | (UINT32)f ) // CHANGE HERE!
+#define _FIX_CTRL_BITS(v, f) ( (v & (UINT32)(f >> 32)) | (UINT32)f )
 /*
  * The `_FIX_CTRL_BITS` macro does the same thing as `FIX_BITS`, but using a 64-bit fixed
  *   value, which is really two 32-bit fixed values (0s and 1s, respectively), returned via an MSR.

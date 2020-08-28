@@ -7,7 +7,7 @@ FixCtrlBits(
 	_In_ UINT32 TrueMSR
 	)
 {
-	VMX_BASIC_INFO basicInfo = { 0 }; // thank you for being a bitch, msvc
+	VMX_BASIC_INFO basicInfo = { 0 };
 
 	basicInfo.All = _MSR( IA32_VMX_BASIC );
 
