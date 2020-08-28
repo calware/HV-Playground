@@ -427,7 +427,7 @@ __save_state:
 
 
 
-	// Resure PASSIVE_LEVEL IRQL
+	// Restore PASSIVE_LEVEL IRQL
 	KeLowerIrql( PreviousIRQL );
 
 	// Free our allocated data structures
