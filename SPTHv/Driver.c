@@ -380,7 +380,7 @@ DriverEntry(
 	// 12.5 Configure the VM-entry controls ([24.8] "VM-Entry Control Fields")
 	_SetEntryControls();
 
-	// 12.6 Set the VMCS link pointer to reflect our usage of the shadow VMCS ([] "")
+	// 12.6 Set the VMCS link pointer to reflect our usage of the shadow VMCS ([26.3.1.5] "Checks on Guest Non-Register State")
 	__vmx_vmwrite( VMCS_GUEST_VMCS_LINK_PTR_FULL, MAXUINT64 );
 
 	// 12.7 Set the VMCS MSR bitmaps ([24.6.9] "MSR-Bitmap Address")
