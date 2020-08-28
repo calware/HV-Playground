@@ -1,5 +1,5 @@
 # All header files should be detected as C project files
-.h linguist-language=C
+*.h linguist-language=C
 
 ###############################################################################
 # Set default behavior to automatically normalize line endings.
