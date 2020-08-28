@@ -314,9 +314,7 @@ DriverEntry(
 
 
 	// 7. Raise the IRQL to prevent context switches for this LP; as the following operations are specific to the current LP
-	PreviousIRQL = KeGetCurrentIrql();
-	if ( PreviousIRQL < DISPATCH_LEVEL )
-		PreviousIRQL = KeRaiseIrqlToDpcLevel();
+	PreviousIRQL = KeRaiseIrqlToDpcLevel();
 
 
 
@@ -426,8 +424,13 @@ __save_state:
 
 
 	// Cleanup
+
+
+
+	// Resure PASSIVE_LEVEL IRQL
 	KeLowerIrql( PreviousIRQL );
 
+	// Free our allocated data structures
 	utlFreeVMXData( &g_LPInfo.VMCS, TRUE );
 
 	utlFreeVMXData( &g_LPInfo.VMXONRegion, TRUE );
