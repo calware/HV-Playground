@@ -422,7 +422,7 @@ typedef union _VM_ENTRY_CTRLS
     UINT32 All;
 } VM_ENTRY_CTRLS;
 
-// [] ""
+// [24.9.1] "Basic VM-Exit Infomation"
 typedef union _VM_EXIT_REASON
 {
     struct
