@@ -35,12 +35,14 @@ __jmp_driverentry_ep:
 VOID
 _FixControlRegisters()
 {
-	// Set the reserved bits of CR0 ([] "")
+	// [23.7] "Enabling and Entering VMX Operation", [23.8] "Restrictions on VMX Operation"
+
+	// Set the reserved bits of CR0
 	__writecr0(
 		FIX_BITS( g_CR0.All, __readmsr(IA32_VMX_CR0_FIXED1), __readmsr(IA32_VMX_CR0_FIXED0) )
 		);
 
-	// Set the reserved bits of CR4 (which implicitly enables VMX operations via setting the CR4.VMXE bit, [] "")
+	// Set the reserved bits of CR4 (which implicitly enables VMX operations via setting the CR4.VMXE bit)
 	__writecr4(
 		FIX_BITS( g_CR4.All, __readmsr(IA32_VMX_CR4_FIXED1), __readmsr(IA32_VMX_CR4_FIXED0) )
 		);

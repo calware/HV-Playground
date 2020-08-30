@@ -12,7 +12,7 @@
 
 UINT64
 __segmentbase(
-	UINT16 selector
+	_In_ CONST UINT16 selector
 	)
 {
 	UINT64 baseAddress = 0;
@@ -78,7 +78,7 @@ __segmentbase(
 
 SEG_ACCESS_RIGHTS
 ReadAR(
-	UINT16 selector
+	_In_ CONST UINT16 selector
 	)
 {
 	// [3.2] "Using Segments"

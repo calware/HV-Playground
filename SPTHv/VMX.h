@@ -46,7 +46,8 @@
 #define VMX_SUCCESS(status) ( status == VMX_OK )
 
 // See microsoft intrinsic functions (Ex: https://docs.microsoft.com/en-us/cpp/intrinsics/vmx-on?view=vs-2019)
-typedef enum _VMX_STATUS_CODE {
+typedef enum _VMX_STATUS_CODE
+{
 	VMX_OK,
 	VMX_ERROR_STATUS,
 	VMX_ERROR
@@ -54,7 +55,8 @@ typedef enum _VMX_STATUS_CODE {
 
 // [30.4] "VM Instruction Error Numbers"
 //	(Read via VMREAD of VMCS_RO_VM_INSTR_ERR)
-typedef enum _VM_INSTR_ERROR {
+typedef enum _VM_INSTR_ERROR
+{
 	VM_INSTR_ERROR_VMCALL_IN_VMX_ROOT = 1,
 	VM_INSTR_ERROR_VMCLEAR_WITH_INVALID_PHYS_ADDR,
 	VM_INSTR_ERROR_VMCLEAR_WITH_VMXON_PTR,
@@ -83,7 +85,8 @@ typedef enum _VM_INSTR_ERROR {
 } VM_INSTR_ERROR;
 
 // [Appendix C] "VMX Basic Exit Reasons", Table C-1
-typedef enum _VMX_BASIC_EXIT_REASON {
+typedef enum _VMX_BASIC_EXIT_REASON
+{
 	REASON_EXCEPTION_OR_NMI,
 	REASON_EXTERNAL_INTERRUPT,
 	REASON_TRIPLE_FAULT,
