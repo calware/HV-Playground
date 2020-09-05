@@ -316,7 +316,21 @@ DriverEntry(
 
 
 	// 7. Raise the IRQL to prevent context switches for this LP; as the following operations are specific to the current LP
-	PreviousIRQL = KeRaiseIrqlToDpcLevel();
+
+    /*  Note: HIGH_LEVEL IRQL required here for how we're executing guest code.
+     *
+     *   Our VM-exit handler is effectively always at HIGH_LEVEL[0], but all of the other
+     *   code, chiefly that which runs within VMX operation (like our guest), could potentially get
+     *   context-switched by an interrupt running at a higher IRQL (such as device/clock interrupts);
+     *   and this creates a particularly nasty bug with our implementation, as after the interrupt
+     *   occurs, windows will try to use the RDTSCP function (in the call chain servicing the higher-IRQL
+     *   interrupt), which isn't enabled in our processor secondary controls, which generates a #UD, and
+     *   bugchecks the guest.
+     *
+     *  [0] https://github.com/tandasat/HyperPlatform/issues/3#issuecomment-230494046
+     */
+
+    KeRaiseIrql( HIGH_LEVEL, &PreviousIRQL );
 
 
 
