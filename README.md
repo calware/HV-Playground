@@ -11,6 +11,8 @@ Below are a list of resources I used when developing the hypervisor seen in this
   * [Daax Rynd's](https://twitter.com/daax_rynd) [*5 Days to Virtualization* series](https://revers.engineering/7-days-to-virtualization-a-series-on-hypervisor-development/)
   * DarthTon's [*HyperBone*](https://github.com/DarthTon/HyperBone)
   * [Alex Ionescu's](https://twitter.com/aionescu) [*SimpleVisor*](https://github.com/ionescu007/SimpleVisor)
+  
+---
 
 Below are an unordered list of public code repositories that demonstrate implementations of hypervisors running on Intel's VT-x (which is inclusive of several of the above). I would like to point out the first entry in the list ([Petr Beneš'](https://twitter.com/PetrBenes) [*hvpp*](https://github.com/wbenny/hvpp)), as he is very experienced when it comes to the development of hypervisors, and you will find many concepts not accurately expressed in the above resources within Petr's code. [Satoshi Tanda's](https://twitter.com/standa_t) [*HyperPlatform*](https://github.com/tandasat/HyperPlatform) is also a very valuable resource, but is very bloated with features outside the scope of simple hypervisor development.
 
