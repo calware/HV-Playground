@@ -8,16 +8,11 @@
 
 #include "Log.h"
 
+
+
 //
 // External definitions
 //
-
-// NTSYSAPI
-// VOID NTAPI
-// RtlRestoreContext (
-// 	PCONTEXT ContextRecord,
-// 	PEXCEPTION_RECORD ExceptionRecord
-// 	);
 
 // See "rawhandler.asm"
 extern VOID

@@ -68,13 +68,8 @@ RestoreContext PROC
     mov r14, [rcx+0E8h]
     mov r15, [rcx+0F0h]
 
-    ; Disable interrupts
-    cli
+    cli                     ; Disable interrupts
 
-    ; Note: not setting FLAGS here, as this value is set to the guest FLAGS (which may
-    ;  be incompatible with the host); and is also largely unnecessary. However, if in
-    ;  the future we wanted to have a function which works to restore our host context
-    ;  back to the DriverEntry (as we were doing initially), we could add this back in.
     push [rcx+044h]         ; Push FLAGS
     popfq                   ; Restore our FLAGS
 
@@ -136,7 +131,7 @@ RawHandler PROC
     jne LErrorBreak                         ;
     mov CxRip[rcx], r8                      ;
 
-    push CxEFlags[rcx]                      ; Preserve host FLAGS (unneeded for the time being)
+    push CxEFlags[rcx]                      ; Preserve host FLAGS
 
     mov rdx, VMCS_GUEST_RFLAGS              ; Get/Set the guest FLAGS
     _VMREAD                                 ;
@@ -146,7 +141,7 @@ RawHandler PROC
     call VMExitHandler                      ; Call our C exit handler
 
     lea rcx, [rsp]                          ; ContextRecord
-    pop CxEFlags[rcx]                       ; Restore host FLAGS (unneeded for the time being)
+    pop CxEFlags[rcx]                       ; Restore host FLAGS
 
     mov rdx, LResume                        ; Obtain the location of our VMRESUME instruction
     lea rcx, [rsp]                          ; ContextRecord

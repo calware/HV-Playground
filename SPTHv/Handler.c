@@ -71,7 +71,7 @@ __exit_vmx_operations:
 
 	__vmx_off();
 
-	// Jump to our DriverEntry's function epilogue
+    // Jump to our DriverEntry's function epilogue
 
     // This will try to execute ZwContinue instead of running through the main
     //  function body (which is ineffective because of our HIGH_LEVEL IRQL)
