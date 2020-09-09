@@ -46,7 +46,6 @@ VMExitHandler(
 
     GuestContext->Rip += instrLen;
 
-    // MAKE SURE THIS guest RIP is CORRECT AND IS ACTUALLY THE ADDRESS OF A RETN INSTR
     NT_ASSERT( __vmx_vmwrite(VMCS_GUEST_RIP, GuestContext->Rip) == VMX_OK );
 
     g_BreakCount += 1;
