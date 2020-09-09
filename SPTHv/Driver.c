@@ -11,17 +11,19 @@ VMExitHandler()
 
 	if ( exitReason.EntryFailure == TRUE )
 	{
-		KdPrint(( "[SPTHv] Unable to perform vm-entry\r\n" ));
+		// KdPrint(( "[SPTHv] Unable to perform vm-entry\r\n" ));
 		goto __jmp_driverentry_ep;
 	}
 
 	switch ( exitReason.BasicReason )
 	{
 		case REASON_HLT:
-			KdPrint(( "[SPTHv] Successfully caught exit via HTL instruction\r\n" ));
+			// KdPrint(( "[SPTHv] Successfully caught exit via HTL instruction\r\n" ));
+            __debugbreak();
 			break;
 		default:
-			KdPrint(( "[SPTHv] Unhandled vm-exit reason; reason = %d\r\n", exitReason.BasicReason ));
+			// KdPrint(( "[SPTHv] Unhandled vm-exit reason; reason = %d\r\n", exitReason.BasicReason ));
+            __debugbreak();
 			break;
 	}
 
