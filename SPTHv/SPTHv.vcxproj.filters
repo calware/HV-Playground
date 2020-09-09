@@ -39,6 +39,15 @@
     <ClCompile Include="Utils.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VMCS.h">
@@ -62,12 +71,24 @@
     <ClInclude Include="CPU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="segintrin.asm">
       <Filter>Source Files\asm</Filter>
     </MASM>
-    <MASM Include="guest.asm">
+    <MASM Include="guestintrin.asm">
+      <Filter>Source Files\asm</Filter>
+    </MASM>
+    <MASM Include="rawhandler.asm">
       <Filter>Source Files\asm</Filter>
     </MASM>
   </ItemGroup>

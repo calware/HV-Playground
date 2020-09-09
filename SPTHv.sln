@@ -12,11 +12,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{82B8
 		scripts\UploadExecute.bat = scripts\UploadExecute.bat
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ex", "ex", "{C7D4B755-7732-426A-84E4-D4C2F1A89E8C}"
-	ProjectSection(SolutionItems) = preProject
-		SPTHv\TODO.txt = SPTHv\TODO.txt
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM

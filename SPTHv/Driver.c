@@ -1,38 +1,6 @@
 #include "Driver.h"
 
 VOID
-VMExitHandler()
-{
-	VM_EXIT_REASON exitReason;
-
-	exitReason.All = 0;
-
-	__vmx_vmread( VMCS_RO_EXIT_REASON, (size_t*)&exitReason.All );
-
-	if ( exitReason.EntryFailure == TRUE )
-	{
-		KdPrint(( "[SPTHv] Unable to perform vm-entry\r\n" ));
-		goto __jmp_driverentry_ep;
-	}
-
-	switch ( exitReason.BasicReason )
-	{
-		case REASON_HLT:
-			KdPrint(( "[SPTHv] Successfully caught exit via HTL instruction\r\n" ));
-			break;
-		default:
-			KdPrint(( "[SPTHv] Unhandled vm-exit reason; reason = %d\r\n", exitReason.BasicReason ));
-			break;
-	}
-
-	__vmx_off();
-
-__jmp_driverentry_ep:
-	// Jump to our DriverEntry's function epilogue
-	RtlRestoreContext( &g_preLaunchCtx, NULL );
-}
-
-VOID
 _FixControlRegisters()
 {
 	// [23.7] "Enabling and Entering VMX Operation", [23.8] "Restrictions on VMX Operation"
@@ -259,6 +227,8 @@ DriverEntry(
 	BOOLEAN bSavedEpAddr = FALSE;
 	UINT64 pEpAddr;
 
+    CONTEXT preLaunchCtx = { 0 };
+
 	VMX_BASIC_INFO vmxBasicInfo;
 	FEATURE_CONTROL featureControl;
 
@@ -274,6 +244,16 @@ DriverEntry(
 	// Capture the CR0/4 values for later usage
 	g_CR0.All = __readcr0();
 	g_CR4.All = __readcr4();
+
+
+
+    // Set our globally visible pre-launch context structure
+    g_preLaunchCtx = &preLaunchCtx;
+
+
+
+    // Register our logging provider (TraceLogging--supported at any IRQL, unlike KdPrint/DbgPrint)
+    NT_ASSERT( NT_SUCCESS(LogSessionStart()) == TRUE );
 
 
 
@@ -316,7 +296,8 @@ DriverEntry(
 
 
 	// 7. Raise the IRQL to prevent context switches for this LP; as the following operations are specific to the current LP
-	PreviousIRQL = KeRaiseIrqlToDpcLevel();
+	// PreviousIRQL = KeRaiseIrqlToDpcLevel(); // attempting to resolve errors here with ETW catching our HLT instruction before a vm-exit can occur
+    KeRaiseIrql( HIGH_LEVEL, &PreviousIRQL );
 
 
 
@@ -352,13 +333,13 @@ DriverEntry(
 	// 12.1 Configure the guest state information ([24.4] "Guest-State Area")
 	_SetVMCSGuestState(
 		(UINT64)g_LPInfo.VMStack.VA + KERNEL_STACK_SIZE,
-		(UINT64)GuestEntry
+		(UINT64)GuestEntry // (UINT64)RawGuestEntry
 		);
 
 	// 12.2 Configure the host state information ([24.5] "Host-State Area")
 	_SetVMCSHostState(
-		(UINT64)g_LPInfo.HostStack.VA + KERNEL_STACK_SIZE, /* - 16 */
-		(UINT64)VMExitHandler
+		(UINT64)g_LPInfo.HostStack.VA + KERNEL_STACK_SIZE,
+		(UINT64)RawHandler
 		);
 
 	// 12.3 Configure the VMCS control fields ([31.6] "Preparation and Launching a Virtual Machine")
@@ -386,14 +367,18 @@ DriverEntry(
 	// 12.7 Set the VMCS MSR bitmaps ([24.6.9] "MSR-Bitmap Address")
 	__vmx_vmwrite( VMCS_CTRL_ADDR_MSR_BITMAPS_FULL, (UINT64)g_LPInfo.MSRBitmap.PA );
 
+    // This may be necessary for breakpoints in the guest (in a blue pill environment)
+    __vmx_vmwrite( VMCS_CTRL_CR0_READ_SHADOW, __readcr0() );
+    __vmx_vmwrite( VMCS_CTRL_CR4_READ_SHADOW, __readcr4() );
+
 
 
 	// Hacky code here to capture the current state so that we can close out this function after our VM-exit
 	//  and successfully load our driver without bugchecking the system
-	RtlCaptureContext( &g_preLaunchCtx );
+	RtlCaptureContext( g_preLaunchCtx );
 	goto __save_state;
 __saved_ep_addr:
-	g_preLaunchCtx.Rip = pEpAddr;
+	g_preLaunchCtx->Rip = pEpAddr;
 
 
 
@@ -421,7 +406,9 @@ __save_state:
 	__writecr0( g_CR0.All );
 	__writecr4( g_CR4.All );
 
-	KdPrint(( "[SPTHv] Successfully performed VMX operation cycle\r\n" ));
+	KdPrint(( "[SPTHv] Performed VMX operation cycle\r\n" ));
+
+    LogMessage( L"Performed VMX operation cycle" );
 
 
 
@@ -429,8 +416,11 @@ __save_state:
 
 
 
-	// Restore PASSIVE_LEVEL IRQL
+    // Restore PASSIVE_LEVEL IRQL
 	KeLowerIrql( PreviousIRQL );
+
+    // Unregister our TraceLogging provider
+    LogSessionEnd();
 
 	// Free our allocated data structures
 	utlFreeVMXData( &g_LPInfo.VMCS, TRUE );

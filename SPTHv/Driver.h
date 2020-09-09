@@ -10,6 +10,9 @@
 #include "VMCS.h"
 #include "Seg.h"
 
+#include "Handler.h"
+#include "Guest.h"
+
 #include "Utils.h"
 
 DRIVER_INITIALIZE DriverEntry;
@@ -17,19 +20,6 @@ DRIVER_INITIALIZE DriverEntry;
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text( INIT, DriverEntry )
 #endif // ALLOC_PRAGMA
-
-//
-// External definitions
-//
-
-NTSYSAPI
-VOID NTAPI
-RtlRestoreContext (
-	PCONTEXT ContextRecord,
-	PEXCEPTION_RECORD ExceptionRecord
-	);
-
-extern void GuestEntry();
 
 
 
@@ -56,21 +46,19 @@ typedef struct _LP_INFO
 
 static LP_INFO g_LPInfo;
 
-static CONTEXT g_preLaunchCtx;
-
 static SYSTEM_TABLE_REGISTER g_GDTR, g_IDTR;
 
 static CR0 g_CR0;
 
 static CR4 g_CR4;
 
+extern PCONTEXT g_preLaunchCtx;
+
+
 
 //
 // Function definitions
 //
-
-VOID
-VMExitHandler();
 
 NTSTATUS
 DriverEntry(

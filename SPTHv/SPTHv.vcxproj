@@ -138,12 +138,18 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.c" />
+    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.c" />
+    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.c" />
     <ClCompile Include="Driver.c" />
     <ClCompile Include="Seg.c" />
     <ClCompile Include="Utils.c" />
     <ClCompile Include="VMX.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.h" />
+    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.h" />
+    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="Driver.h" />
     <ClInclude Include="MSR.h" />
@@ -153,7 +159,8 @@
     <ClInclude Include="VMX.h" />
   </ItemGroup>
   <ItemGroup>
-    <MASM Include="guest.asm" />
+    <MASM Include="rawhandler.asm" />
+    <MASM Include="guestintrin.asm" />
     <MASM Include="segintrin.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
