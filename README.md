@@ -6,6 +6,7 @@ A simple and heavily documented single-processor test hypervisor for 64-bit Wind
   * [EPT]()
   * [EventInjection]()
   * [BluePill]()
+  * [SyscallHook]()
 
 # Resources
 Below are a list of resources I used when developing the hypervisor seen in this repository.
