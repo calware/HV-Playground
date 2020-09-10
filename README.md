@@ -2,7 +2,7 @@
 A simple and heavily documented single-processor test hypervisor for 64-bit Windows 10 systems running under Intel's VT-x
 
 # Branches
-  * [GuestState](https://github.com/calware/HV-Playground/blob/GuestState/README.md)
+  * [GuestState](https://github.com/calware/HV-Playground/tree/GuestState)
   * [EPT]()
   * [EventInjection]()
   * [BluePill]()
