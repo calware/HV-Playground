@@ -2,6 +2,8 @@
 
 This branch demonstrates an environment in which users can more comprehensively inspect and modify guest execution state. Additionally, it allows for continuous VM-entries via the `VMRESUME` instruction.
 
+[**Compare this branch to the previous one (master)**](https://github.com/calware/HV-Playground/compare/master...GuestState)
+
 Several files have been added from the initial implementation. These files, along with a short description of their purpose, have been listed below.
  * **Guest(.h/c)** Houses the C code and definitions related to the guest execution environment. This includes assembly function definitions from `guestintrin.asm`, which are designed to be interoperable with C-level guest code. The C environment which facilitates guest execution is located in a function called `GuestEntry`, which can be optionally configured as the guest entry point in the call to `SetVMCSGuestState` in our `Driver.c` file.
  * **Handler(.h/c)** Outlines our previous `VMExitHandler` function from the `Driver.c` file to it's own source file (`Handler.c`), and defines two external functions, `RawHandler`, and `RestoreContext`, which are assembly functions found in the `rawhandler.asm` file.
