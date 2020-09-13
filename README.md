@@ -9,14 +9,14 @@ Below you will find a list of the aforementioned branches.
 
 # Completed Branches
   * [**master**](https://github.com/calware/HV-Playground) - Demonstrates the minimum possible design required to enter into VMX operation and run guest code. The code is designed to run on a single processor (on multiprocessor systems) within a `DriverEntry` function, setup VMX operation, redirect to guest execution, break back to the VMM after executing a halt instruction (as the guest), exit VMX operations, and complete the `DriverEntry` function. 
-  * [**GuestState**](https://github.com/calware/HV-Playground/tree/GuestState) \[Froked from master\] - Adds code to preserve the guest state across VM exits, code to continue the guest execution, and TraceLogging support to enable debug logging from our VMM.
+  * [**GuestState**](https://github.com/calware/HV-Playground/tree/GuestState) *\[Froked from master\]* - Adds code to preserve the guest state across VM exits, code to continue the guest execution, and TraceLogging support to enable debug logging from our VMM.
 
 # Incomplete Branches
-  * [EPT]() \[Forked from GuestState\] - Simplistic EPT configuration supporting (only) 4KB guest pages. Complete with memory management helper routines, this branch also demonstrates EPT splitting attacks to hide memory from the guest.
-  * [EPTIdentity]() \[Forked from EPT\] - EPT configuration designed to support 2MB large pages in an guest-to-host identity map (full MMIO virtualization). Also demonstrates EPT splitting attacks by selectively splitting target 2MB pages to their 4KB equivalents.
-  * [EventInjection]() \[Forked from GuestState\] - 
-  * [BluePill]() \[Forked from GuestState\] -
-  * [SyscallHook]() \[Forked from BluePill\] -
+  * [EPT]() *\[Forked from GuestState\]* - Simplistic EPT configuration supporting (only) 4KB guest pages. Complete with memory management helper routines, this branch also demonstrates EPT splitting attacks to hide memory from the guest.
+  * [EPTIdentity]() *\[Forked from EPT\]* - EPT configuration designed to support 2MB large pages in an guest-to-host identity map (full MMIO virtualization). Also demonstrates EPT splitting attacks by selectively splitting target 2MB pages to their 4KB equivalents.
+  * [EventInjection]() *\[Forked from GuestState\]* - 
+  * [BluePill]() *\[Forked from GuestState\]* -
+  * [SyscallHook]() *\[Forked from BluePill\]* -
 
 # Resources
 Below are a list of resources I used when developing the hypervisor seen in this repository.
