@@ -1,13 +1,22 @@
 # HV-Playground
-A simple and heavily documented single-processor test hypervisor for 64-bit Windows 10 systems running under Intel's VT-x
+A simple and heavily documented test hypervisor for 64-bit Windows 10 systems running under Intel's VT-x.
 
-# Branches
-  * [GuestState](https://github.com/calware/HV-Playground/tree/GuestState)
-  * [EPT]()
-  * [EPTIdentity]()
-  * [EventInjection]()
-  * [BluePill]()
-  * [SyscallHook]()
+This hypervisor was designed to be very simple. To achieve this, it outlines all of it's main operations into the `Driver.c` file (and functions directly above it), and only uses the current processor to conduct it's VMX operation cycle; which consists of running the guest code, catching exits in the VMM, and completing the `DriverEntry` routine. It makes use of defintions from the SDM—all of which are promptly cited to enable the end user to conduct research on their own.
+
+As we move past the initial design of our hypervisor—which is only what's required to run guest code—and begin to add functionality, we enter into a considerably more complicated realm of VMX operation; demonstrating concepts such as MMIO virtualization (EPT), root to non-root communication, event injection, and so on. To reduce confusion, and to keep our code base as small and simplistic as possible, each these features are outlined individually into their own implementation (branches) which build upon (fork) the prior designs. In doing this, it is my hope that someone without prior experience developing hypervisors could, with some dedication, understand the concepts demonstrated in our master branch, and then go on to learn about these more complicated concepts in a simple and unrestricted environment.
+
+Below you will find a list of the aforementioned branches.
+
+# Completed Branches
+  * [**master**](https://github.com/calware/HV-Playground) - Demonstrates the minimum possible design required to enter into VMX operation and run guest code. The code is designed to run on a single processor (on multiprocessor systems) within a `DriverEntry` function, setup VMX operation, redirect to guest execution, break back to the VMM after executing a halt instruction (as the guest), exit VMX operations, and complete the `DriverEntry` function. 
+  * [**GuestState**](https://github.com/calware/HV-Playground/tree/GuestState) \[Froked from master\] - Adds code to preserve the guest state across VM exits, code to continue the guest execution, and TraceLogging support to enable debug logging from our VMM.
+
+# Incomplete Branches
+  * [EPT]() \[Forked from GuestState\] - Simplistic EPT configuration supporting (only) 4KB guest pages. Complete with memory management helper routines, this branch also demonstrates EPT splitting attacks to hide memory from the guest.
+  * [EPTIdentity]() \[Forked from EPT\] - EPT configuration designed to support 2MB large pages in an guest-to-host identity map (full MMIO virtualization). Also demonstrates EPT splitting attacks by selectively splitting target 2MB pages to their 4KB equivalents.
+  * [EventInjection]() \[Forked from GuestState\] - 
+  * [BluePill]() \[Forked from GuestState\] -
+  * [SyscallHook]() \[Forked from BluePill\] -
 
 # Resources
 Below are a list of resources I used when developing the hypervisor seen in this repository.
