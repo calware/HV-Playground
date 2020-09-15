@@ -19,7 +19,7 @@ Below you will find a list of the aforementioned branches.
   * [SyscallHook]() *\[Forked from BluePill\]* - Going a step beyond our *BluePill* branch, we demonstrate the replacement of the `LSTAR` MSR; which is used internally to redirect the instruction pointer upon executing a `SYSCALL` instruction. The effectiveness of this feature is seen in modifying the behavior of Windows 10's Task Manager to selectively hide processes. Additionally, this branch also demonstrates how one may utilize `VMCALL` VM-exits to communicate with the VMM from a usermode VMX non-root context.
 
 # Resources
-Below are a list of resources I used when developing the hypervisor seen in this repository.
+Below are a list of resources I used when developing the hypervisor seen in this repository (**the master branch**).
 
   * *Intel® 64 and IA-32 Architectures Software Developer’s Manual (Volume 3C): System Programming Guide - Part 3* — https://software.intel.com/content/dam/develop/public/us/en/documents/326019-sdm-vol-3c.pdf | This includes pretty much all of the information you will need to understand VMX operation.
   * *Intel® 64 and IA-32 architectures software developer's manual combined volumes 2A, 2B, 2C, and 2D: Instruction set reference, A-Z* — https://software.intel.com/content/dam/develop/public/us/en/documents/325383-sdm-vol-2abcd.pdf | This includes most of the general information required to build a hypervisor which isn't contained in Volume 3C, such as information on (and structuring of) the GDT/IDT, segment/system segment descriptors, segment selectors, the CR0/4 and FLAGS layout, and so on.
