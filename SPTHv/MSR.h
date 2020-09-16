@@ -36,7 +36,7 @@
 #define IA32_VMX_ENTRY_CTLS             0x484
 #define IA32_VMX_TRUE_ENTRY_CTLS        0x490
 
-// Fuck my whole ass
+// Special segment MSRs
 #define IA32_FS_BASE                    0xC0000100
 #define IA32_GS_BASE                    0xC0000101
 #define IA32_KERNEL_GS_BASE             0xC0000102
