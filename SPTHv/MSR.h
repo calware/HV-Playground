@@ -59,7 +59,7 @@ typedef union _VMX_BASIC_INFORMATION
         UINT64 Reserved1 : 3;                           // 45-47
         UINT64 VMXONPAWidth : 1;                        // 48
         UINT64 DualMonSMI : 1;                          // 49
-        UINT64 VMCSMemType : 4;                         // 50-53    (A.1 "Basic VMX Information", Table A-1)
+        UINT64 MemType : 4;                             // 50-53    (A.1 "Basic VMX Information", Table A-1)
         UINT64 INSOUTSReporting : 1;                    // 54
         UINT64 TrueControls : 1;                        // 55        (Default1 controls can be zero, support for capability MSRs)
         UINT64 DeliverHardwareExcept : 1;               // 56
