@@ -36,10 +36,13 @@
 #define IA32_VMX_ENTRY_CTLS             0x484
 #define IA32_VMX_TRUE_ENTRY_CTLS        0x490
 
-// Fuck my whole ass
+// Special segment MSRs
 #define IA32_FS_BASE                    0xC0000100
 #define IA32_GS_BASE                    0xC0000101
 #define IA32_KERNEL_GS_BASE             0xC0000102
+
+// EPT and VPID capability MSRs
+#define IA32_VMX_EPT_VPID_CAP           0x48C
 
 
 #pragma warning(push)
@@ -52,14 +55,14 @@ typedef union _VMX_BASIC_INFORMATION
 {
     struct
     {
-        UINT32 /*[sic]*/ RevisionIdentifier : 31;       // 0-30
+        UINT32 RevisionIdentifier : 31;                 // 0-30
         UINT64 Reserved0 : 1;                           // 31
         UINT64 VMAllocSize : 12;                        // 32-43
         UINT64 VMAllocMaxDefault : 1;                   // 44
         UINT64 Reserved1 : 3;                           // 45-47
         UINT64 VMXONPAWidth : 1;                        // 48
         UINT64 DualMonSMI : 1;                          // 49
-        UINT64 VMCSMemType : 4;                         // 50-53    (A.1 "Basic VMX Information", Table A-1)
+        UINT64 MemType : 4;                             // 50-53    (A.1 "Basic VMX Information", Table A-1)
         UINT64 INSOUTSReporting : 1;                    // 54
         UINT64 TrueControls : 1;                        // 55        (Default1 controls can be zero, support for capability MSRs)
         UINT64 DeliverHardwareExcept : 1;               // 56
@@ -80,6 +83,49 @@ typedef union _FEATURE_CONTROL
     };
     UINT64 All;
 } FEATURE_CONTROL, *PFEATURE_CONTROL;
+
+// [A.10] "VPID and EPT Capabilities"
+#define CAP_INVEPT_SUPPORTED_MASK       0x6100000       // bits 20, 25, and 26
+#define CAP_INVVPID_SUPPORTED_MASK      0xF0100000000   // bits 32, 40, 41, 42, and 43
+
+#define IS_INVEPT_SUPPORTED(cap) ( ((cap & CAP_INVEPT_SUPPORTED_MASK) != 0) ? TRUE : FALSE )
+#define IS_INVVPID_SUPPORTED(cap) ( ((cap & CAP_INVVPID_SUPPORTED_MASK) != 0) ? TRUE : FALSE )
+
+typedef union _EPT_VPID_CAPABILITIES
+{
+    struct
+    {
+        UINT64 EPTExecuteOnly : 1;                      // 0
+        UINT64 Reserved0 : 5;                           // 1-5
+        UINT64 EPT4PageWalk : 1;                        // 6
+        UINT64 Reserved1 : 1;                           // 7
+        UINT64 EPTMemUC : 1;                            // 8
+        UINT64 Reserved2 : 5;                           // 9-13
+        UINT64 EPTMemWB : 1;                            // 14
+        UINT64 Reserved3 : 1;                           // 15
+        UINT64 EPTPage2MB : 1;                          // 16
+        UINT64 EPTPage1GB : 1;                          // 17
+        UINT64 Reserved4 : 1;                           // 18-19
+        UINT64 INVEPT : 1;                              // 20
+        UINT64 EPTAccessedDirty : 1;                    // 21
+        UINT64 EPTViolationExtendedInformation : 1;     // 22
+        UINT64 SupervisorShadowStack : 1;               // 23
+        UINT64 Reserved5 : 1;                           // 24
+        UINT64 INVEPTSingleContext : 1;                 // 25
+        UINT64 INVEPTAllContext : 1;                    // 26
+        UINT64 Reserved6 : 5;                           // 27-31
+        UINT64 INVVPID : 1;                             // 32
+        UINT64 Reserved7 : 7;                           // 33-39
+        UINT64 INVVPIDIndividualAddress : 1;            // 40
+        UINT64 INVVPIDSingleContext : 1;                // 41
+        UINT64 INVVPIDAllContext : 1;                   // 42
+        UINT64 INVVPIDSingleContextRetainGlobals : 1;   // 43
+        // ...
+    };
+    UINT64 All;
+} EPT_VPID_CAP;
+
+
 
 #pragma warning(pop)
 

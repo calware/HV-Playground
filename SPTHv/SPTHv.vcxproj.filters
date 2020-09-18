@@ -48,6 +48,12 @@
     <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\sh%40dow\EPT\SPTHv\EPT.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\sh%40dow\EPT\SPTHv\Memory.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VMCS.h">
@@ -78,6 +84,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\EPT.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\Memory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\GuestTarget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

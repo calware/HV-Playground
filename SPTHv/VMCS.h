@@ -438,6 +438,29 @@ typedef union _VM_EXIT_REASON
     UINT32 All;
 } VM_EXIT_REASON;
 
+// [27.2, Table 27-7] "Exit Qualification for EPT Violations"
+typedef union _EPT_VIOLATION_QUALIFICATION
+{
+    struct
+    {
+        UINT64 DataRead : 1;                        // 0
+        UINT64 DataWrite : 1;                       // 1
+        UINT64 InstructionFetch : 1;                // 2
+        UINT64 PageEntryReadable : 1;               // 3
+        UINT64 PageEntryWriteable : 1;              // 4
+        UINT64 PageEntryExecutable : 1;             // 5        // be careful when using this, as it depends on the "mode-based exeute control for EPT"
+        UINT64 PageEntryUserExecutable : 1;         // 6        // " "
+        UINT64 ValidGuestLinearAddress : 1;         // 7
+        UINT64 EPTPageFault : 1;                    // 8        // only valid if the above bit is set, also not sure if this is exactly what this is (it's set if the translation caused the exit)
+        UINT64 UsermodeLinearAddress : 1;           // 9        // only valid if bits 7 and 8 are set, in addition to advanced EPT reporting
+        UINT64 TranslatedRWPage : 1;                // 10       // " " + unset means this is a read only page
+        UINT64 TranslatedNXPage : 1;                // 11       // " " + unset means this is an executable page
+        UINT64 NMIUnblockingIRET : 1;               // 12
+        UINT64 Reserved0 : 51;                      // 13-63
+    };
+    UINT64 All;
+} EPT_VIOLATION_INFORMATION;
+
 #pragma warning(pop)
 
 #endif // __VMCS_H__

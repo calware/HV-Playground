@@ -4,7 +4,10 @@
 #include <intrin.h>
 #include "MSR.h"
 
-#define VMX_ALLOCATION_DEFAULT_MAX 0x1000
+#define VMX_ALLOCATION_DEFAULT_MAX  0x1000
+
+#define VMX_MEM_TYPE_UC             0
+#define VMX_MEM_TYPE_WB             6
 
 #define FIX_BITS(v, o, z) ( (v & o) | z )
 /*

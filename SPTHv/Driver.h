@@ -13,6 +13,8 @@
 #include "Handler.h"
 #include "Guest.h"
 
+#include "EPT.h"
+
 #include "Utils.h"
 
 DRIVER_INITIALIZE DriverEntry;

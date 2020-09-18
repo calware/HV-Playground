@@ -216,6 +216,71 @@ _SetEntryControls()
 	__vmx_vmwrite( VMCS_CTRL_VM_ENTRY_CTRLS, entryCtrls.All );
 }
 
+BOOLEAN
+_CheckSecondaryControlsEnabled()
+{
+    PROCESSOR_PRIMARY_VM_EXEC_CTRLS allowedPrimaryControls;
+
+    // Set all bits in this control, as we are about to mask off the disallowed bits
+    allowedPrimaryControls.All = MAXUINT32;
+
+    // Leave only the supported bits set
+    //  ([31.5.1] "Algorithms for Determining VMX Capabilities")
+    allowedPrimaryControls.All &= (__readmsr(IA32_VMX_PROCBASED_CTLS) >> 32);
+
+    if ( allowedPrimaryControls.ActivateSecondaryControls == TRUE )
+    {
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+BOOLEAN
+_CheckEPTWithFeatures()
+{
+    EPT_VPID_CAP eptFeatures;
+    PROCESSOR_SECONDARY_VM_EXEC_CTRLS allowedSecondaryControls;
+
+    VMX_BASIC_INFO vmxBasicInfo;
+
+    // Set all bits in this control, as we are about to mask off the disallowed bits
+    //  ([31.5.1] "Algorithms for Determining VMX Capabilities")
+    allowedSecondaryControls.All &= (__readmsr(IA32_VMX_PROCBASED_CTLS2) >> 32);
+
+    // Check if EPT is supported
+    if ( allowedSecondaryControls.EnableEPT == FALSE )
+    {
+        return FALSE;
+    }
+
+    eptFeatures.All = __readmsr( IA32_VMX_EPT_VPID_CAP );
+
+    /*
+     * We require the INVEPT instruction as we're dynamically changing the
+     *  paging tables to hijack a function; and must invalidate the cache to
+     *  reflect our changes.
+     *
+     * Note: the mode in which INVEPT operates is very important. For instance,
+     *  there may come a point where we have to generate an IPI in which we execute
+     *  an INVEPT instruction for each processor, if the capability MSR indicates that
+     *  INVEPT is not effective across all contexts.
+     *  For our application, though, we only use one processor, so it's not a problem.
+     */
+    if ( IS_INVEPT_SUPPORTED(eptFeatures.All) == FALSE )
+    {
+        return FALSE;
+    }
+
+    // Check if the required EPT features are supported
+    if ( eptFeatures.EPT4PageWalk == FALSE )
+    {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
 NTSTATUS
 DriverEntry(
 	_In_ PDRIVER_OBJECT DriverObject,
@@ -254,6 +319,39 @@ DriverEntry(
 
     // Register our logging provider (TraceLogging--supported at any IRQL, unlike KdPrint/DbgPrint)
     NT_ASSERT( NT_SUCCESS(LogSessionStart()) == TRUE );
+
+
+
+    // [EPT] 1. Do some preliminary checks on whether or not EPT (per our desired operations) is enabled
+
+    // [EPT] 1.1 Ensure the processor secondary control set is supported
+    NT_ASSERT( _CheckSecondaryControlsEnabled() == TRUE );
+
+    // [EPT] 1.2 Ensure that EPT is supported, and the features relating to our operation are supported
+    NT_ASSERT( _CheckEPTWithFeatures() == TRUE );
+
+    // [EPT] 2. Initialize our EPT structure (the EPTP, and it's PML4 table)
+    NT_ASSERT( BuildEPT() == TRUE );
+
+    // [EPT] 3. Obtain physical index points for our required physical addresses,
+    //  and insert them into the paging structures, creating new allocations where required
+
+    // [EPT] 3.1 Guest entry point
+    NT_ASSERT( InsertEPTEntry((PVOID)GuestEntry) == TRUE );
+
+    // [EPT] 3.2 Guest stack
+    NT_ASSERT( InsertEPTEntry(g_LPInfo.VMStack.VA) == TRUE );
+
+    // [EPT] 3.3 Initial guest function
+    NT_ASSERT( InsertEPTEntry((PVOID)GuestTargetFn) == TRUE );
+
+    // [EPT] 3.4 Hook guest function
+    NT_ASSERT( InsertEPTEntry((PVOID)GuestHookFn) == TRUE );
+
+    // Next thing you need to do is go implement the logic for EPT violations within our handler
+    //  Then you need to implement the switching, which will at least require a lookup function in the EPT source
+    //  Then you need to research and implement the INVEPT instruction (and look into multiprocessor support)
+    //  Then you need to test :)
 
 
 
@@ -436,6 +534,8 @@ __save_state:
     LogSessionEnd();
 
 	// Free our allocated data structures
+    NT_ASSERT( TeardownEPT() == TRUE );
+
 	utlFreeVMXData( &g_LPInfo.VMCS, TRUE );
 
 	utlFreeVMXData( &g_LPInfo.VMXONRegion, TRUE );
