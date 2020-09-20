@@ -1,5 +1,20 @@
 #include "Guest.h"
 
+__declspec(code_seg("TARGET"))
+UINT8
+GuestTargetFn()
+{
+    return 0xAA;
+}
+
+__declspec(code_seg("HOOK"))
+UINT8
+GuestHookFn()
+{
+    return 0xBB;
+}
+
+__declspec(code_seg("GUEST"))
 VOID
 GuestEntry()
 {
@@ -9,11 +24,11 @@ GuestEntry()
      *  the facilitation of more complicated guest and VMM operations
      */
 
-    unsigned char a = 0x88;
+    UINT8 returnValue = 0;
 
     __hlt();
 
-    a = 0x99;
+    returnValue = GuestTargetFn();
 
-    __hlt();
+    __hlt(); // Check that 0xBB is present on the stack, instead of 0xAA
 }

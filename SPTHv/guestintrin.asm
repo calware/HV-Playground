@@ -5,12 +5,20 @@
 ;
 ; See the parent header, "Guest.h"
 
-.CODE
+; =================================================
+
+.CODE HLTASM
 
 __hlt PROC
     hlt
     ret
 __hlt ENDP
+
+HLTASM ENDS
+
+; =================================================
+
+.CODE
 
 RawGuestEntry PROC
     mov rax, 2

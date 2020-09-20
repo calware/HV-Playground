@@ -151,11 +151,14 @@ _SetProcessorPrimaryControls()
 	processorPrimaryCtrls.All = 0;
 
 	// VM-exit on `HLT` instructions, which is the first instruction (by default) set in the GuestEntry function (see "./guest.asm")
-	processorPrimaryCtrls.HLTExiting = 1; 
+	processorPrimaryCtrls.HLTExiting = TRUE; 
 
 	// Use the provided MSR bitmap to determine when to cause VM-exits based on MSR read/write operations
 	//	Note: by default this will ignore all MSR read/write operations, as no MSRs are specified in our bitmap (zeroed)
-	processorPrimaryCtrls.UseMSRBitmaps = 1; 
+    processorPrimaryCtrls.UseMSRBitmaps = TRUE;
+
+    // [EPT] Set the usage of our processor secondary control set to allow for EPT
+    processorPrimaryCtrls.ActivateSecondaryControls = TRUE;
 
 	// Fix the control bits (note: no pre-checking on allowed settings here)
 	processorPrimaryCtrls.All = FixCtrlBits( processorPrimaryCtrls.All, IA32_VMX_PROCBASED_CTLS, IA32_VMX_TRUE_PROCBASED_CTLS );
@@ -171,7 +174,8 @@ _SetProcessorSecondaryControls()
 	PROCESSOR_SECONDARY_VM_EXEC_CTRLS processorSecondaryCtrls;
 	processorSecondaryCtrls.All = 0;
 
-	// ...
+    // [EPT] Enable Extended Page Tables
+    processorSecondaryCtrls.EnableEPT = TRUE;
 
 	// Fix the control bits (note: no pre-checking on allowed settings here)
 	//	(Note: in the FixCtrlBits function I have included logic to handle the case of processor secondary controls)
@@ -228,12 +232,7 @@ _CheckSecondaryControlsEnabled()
     //  ([31.5.1] "Algorithms for Determining VMX Capabilities")
     allowedPrimaryControls.All &= (__readmsr(IA32_VMX_PROCBASED_CTLS) >> 32);
 
-    if ( allowedPrimaryControls.ActivateSecondaryControls == TRUE )
-    {
-        return TRUE;
-    }
-
-    return FALSE;
+    return (BOOLEAN)allowedPrimaryControls.ActivateSecondaryControls;
 }
 
 BOOLEAN
@@ -242,9 +241,9 @@ _CheckEPTWithFeatures()
     EPT_VPID_CAP eptFeatures;
     PROCESSOR_SECONDARY_VM_EXEC_CTRLS allowedSecondaryControls;
 
-    VMX_BASIC_INFO vmxBasicInfo;
-
     // Set all bits in this control, as we are about to mask off the disallowed bits
+    allowedSecondaryControls.All = MAXUINT32;
+
     //  ([31.5.1] "Algorithms for Determining VMX Capabilities")
     allowedSecondaryControls.All &= (__readmsr(IA32_VMX_PROCBASED_CTLS2) >> 32);
 
@@ -297,6 +296,9 @@ DriverEntry(
 	VMX_BASIC_INFO vmxBasicInfo;
 	FEATURE_CONTROL featureControl;
 
+    VMX_STATUS_CODE launchStatus;
+    VM_INSTR_ERROR instrError;
+
 	UNREFERENCED_PARAMETER( DriverObject );
 	UNREFERENCED_PARAMETER( RegistryPath );
 
@@ -322,7 +324,7 @@ DriverEntry(
 
 
 
-    // [EPT] 1. Do some preliminary checks on whether or not EPT (per our desired operations) is enabled
+    // [EPT] 1. Do some preliminary checks on whether or not EPT is supported (per our desired operations)
 
     // [EPT] 1.1 Ensure the processor secondary control set is supported
     NT_ASSERT( _CheckSecondaryControlsEnabled() == TRUE );
@@ -331,29 +333,9 @@ DriverEntry(
     NT_ASSERT( _CheckEPTWithFeatures() == TRUE );
 
     // [EPT] 2. Initialize our EPT structure (the EPTP, and it's PML4 table)
-    NT_ASSERT( BuildEPT() == TRUE );
+    NT_ASSERT( EptBuild() == TRUE );
 
-    // [EPT] 3. Obtain physical index points for our required physical addresses,
-    //  and insert them into the paging structures, creating new allocations where required
-
-    // [EPT] 3.1 Guest entry point
-    NT_ASSERT( InsertEPTEntry((PVOID)GuestEntry) == TRUE );
-
-    // [EPT] 3.2 Guest stack
-    NT_ASSERT( InsertEPTEntry(g_LPInfo.VMStack.VA) == TRUE );
-
-    // [EPT] 3.3 Initial guest function
-    NT_ASSERT( InsertEPTEntry((PVOID)GuestTargetFn) == TRUE );
-
-    // [EPT] 3.4 Hook guest function
-    NT_ASSERT( InsertEPTEntry((PVOID)GuestHookFn) == TRUE );
-
-    // Next thing you need to do is go implement the logic for EPT violations within our handler
-    //  Then you need to implement the switching, which will at least require a lookup function in the EPT source
-    //  Then you need to research and implement the INVEPT instruction (and look into multiprocessor support)
-    //  Then you need to test :)
-
-
+    
 
 	// See [31.6] "Preparation and Launching a Virtual Machine" for "the minimal steps required by the VMM to set up and launch a guest VM"
 
@@ -383,6 +365,39 @@ DriverEntry(
 
 	// 5. Allocate the VMCS Region (4KB contiguous physical address needed, [24.11.5] "VMXON Region")
 	NT_ASSERT( utlAllocateVMXData( VMX_ALLOCATION_DEFAULT_MAX, TRUE, TRUE, &g_LPInfo.VMCS ) == TRUE );
+
+
+
+    // [EPT] 3. Obtain physical index points for our required physical addresses,
+    //  and insert them into the paging structures, creating new allocations where required
+
+    // [EPT] 3.1 Guest entry point
+    NT_ASSERT( EptInsertSystemVA((PVOID)GuestEntry) == TRUE );
+
+    /*
+     * Problem here, as we allocate 6 4KB pages (24KB kernel stack size), and
+     *   were only mapping the first 4KB region.
+     *
+     * Note: by subtracting one, and slicing off the last 12 bits (page offset),
+     *   we effectively lie at the top of the final page boundary of our stack allocation
+     *   (which is the only page of the stack our current guest will use)
+     */
+    UINT64 lastGuestStackPage = (
+        ((UINT64)g_LPInfo.VMStack.VA + (KERNEL_STACK_SIZE - 1)) & (UINT64)~0xFFF
+        );
+
+    // [EPT] 3.2 Guest stack
+    NT_ASSERT( EptInsertSystemVA((PVOID)lastGuestStackPage) == TRUE );
+
+    // [EPT] 3.3 Target guest function
+    NT_ASSERT( EptInsertSystemVA((PVOID)GuestTargetFn) == TRUE );
+
+    // [EPT] 3.4 Target redirection function
+    NT_ASSERT( EptInsertSystemVA((PVOID)GuestHookFn) == TRUE );
+
+    // [EPT] 3.5 HLT assembly function (used inthe guest like breakpoints
+    //  to call into our VMM for servicing)
+    NT_ASSERT( EptInsertSystemVA((PVOID)__hlt) == TRUE );
 
 
 
@@ -441,6 +456,8 @@ DriverEntry(
 
 	// 12. Configure our VMCS sections ([24.3] "Organization of VMCS Data")
 
+
+
 	// 12.1 Configure the guest state information ([24.4] "Guest-State Area")
 	_SetVMCSGuestState(
 		(UINT64)g_LPInfo.VMStack.VA + KERNEL_STACK_SIZE,
@@ -476,11 +493,15 @@ DriverEntry(
 	__vmx_vmwrite( VMCS_GUEST_VMCS_LINK_PTR_FULL, MAXUINT64 );
 
 	// 12.7 Set the VMCS MSR bitmaps ([24.6.9] "MSR-Bitmap Address")
+    //  Note the usage of a physical address here
 	__vmx_vmwrite( VMCS_CTRL_ADDR_MSR_BITMAPS_FULL, (UINT64)g_LPInfo.MSRBitmap.PA );
 
     // This may be necessary for breakpoints in the guest (in a blue pill environment)
     __vmx_vmwrite( VMCS_CTRL_CR0_READ_SHADOW, __readcr0() );
     __vmx_vmwrite( VMCS_CTRL_CR4_READ_SHADOW, __readcr4() );
+
+    // [EPT] 4. Write the EPTP to our VMCS
+    NT_ASSERT( __vmx_vmwrite(VMCS_CTRL_EPT_POINTER_FULL, g_EPTP.All) == VMX_OK );
 
 
 
@@ -493,8 +514,18 @@ __saved_ep_addr:
 
 
 
-	// 13. Virtualize the LP (if this is successful, it will jump to VMExitHandler)
-	NT_ASSERT( __vmx_vmlaunch() == VMX_OK );
+	// 13. Virtualize the LP
+    //  if this is successful, it will jump to VMExitHandler; as the guest will execute a HLT instruction
+    launchStatus = __vmx_vmlaunch();
+    if ( launchStatus == VMX_ERROR_STATUS )
+    {
+        // We have an error status held in the VMCS
+        instrError = 0;
+        NT_ASSERT(__vmx_vmread(VMCS_RO_VM_INSTR_ERR, (size_t*)&instrError) == VMX_OK);
+        __debugbreak();
+    }
+
+    NT_ASSERT( launchStatus == VMX_OK );
 
 
 
@@ -534,7 +565,7 @@ __save_state:
     LogSessionEnd();
 
 	// Free our allocated data structures
-    NT_ASSERT( TeardownEPT() == TRUE );
+    NT_ASSERT( EptTeardown() == TRUE );
 
 	utlFreeVMXData( &g_LPInfo.VMCS, TRUE );
 

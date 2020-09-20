@@ -6,7 +6,11 @@
 #include "VMCS.h"
 #include "VMX.h"
 
+#include "EPT.h"
+#include "Guest.h"
+
 #include "Log.h"
+#include "Utils.h"
 
 
 

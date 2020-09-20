@@ -6,9 +6,13 @@
 #include <intrin.h>
 
 #define PAGESIZE_BIT                    0x40
+#define PAGE_OFFSET_4KB                 12
 #define PAGING_TABLE_BASE_ADDRESS_MASK  0xFFFFFF000
 
+// Note: this can only be used on tables which map 4KB regions
+//  Pages which map 'large' (1GB/2MB) regions are not supported
 #define TABLE_BASE_ADDRESS(a) ((UINT64)(a & PAGING_TABLE_BASE_ADDRESS_MASK))
+
 #define LARGE_PAGE_MAPPING(a) ((a & PAGESIZE_BIT) == 1)
 
 #pragma warning(push)
@@ -26,8 +30,10 @@
  * Note: this could be either a standard virtual address, or a guest-physical address
  *
  * In the case of a guest-physical address, you may be concerned that your physical
- *  address width doesn't match (or exceed 48 bits), but is is completely fine & to be expected.
- *  To index only 16GB, you need a mininum of 34 bits (16*1024^3)
+ *  address width doesn't match (or exceed 48 bits), but is is completely fine and to be expected.
+ * Say your physical address width is only 34 bits—to index only 16GB, you only need 34 bits
+ *  (16*1024^3 = 2^34)—the bits above this point, that would be used to index the PML4, are just
+ *  going to be zero; which is fine because each PML4E maps 512GB of memory, which you don't have.
  */
 typedef union _VA_PA_LAYOUT
 {
@@ -64,8 +70,9 @@ typedef union _CR3
  * [Vol.3A Table 4-19] "Format of a Page-Directory Entry that References a Page Table"
  * [Vol.3A Table 4-20] "Format of a Page-Table Entry that Maps a 4-KByte Page"
  *
- * Note: this is the layout for a PTE (that maps a 4KB page), and the fields are slightly different
- *  for paging entries that are able to map large pages; such as certain PDPTEs (1GB) and PDEs (2MB)
+ * Note: this is the layout for a generic page table entry that maps a 4KB region—be that a page table, or
+ *  actual data (in the case of a PTE). In the case of mappings exceeding 4KB in size (large page mappings
+ *  of 1GB or 2MB) the fields are slightly different.
  */
 typedef union _PAGING_ENTRY
 {
@@ -93,17 +100,17 @@ typedef union _PAGING_ENTRY
 typedef struct _INDEX_ENTRY
 {
     PAGING_ENTRY Fields;                    // It may be beneficial to know which permision bits are to be set on the page in question
-    UINT64 BaseAddress;                     // This is mainly what has to be translated with traversing our EPT paging tables (it must point to itself)
+    UINT64 BaseAddress;                     // This holds the base address of each page table, and is mainly what has to be translated with traversing our EPT paging tables
 } INDEX_ENTRY;
 
 /*
- * Each of these entries `BaseAddress` fields must be indexable via our EPT
- *  tables, so use the VA_LAYOUT fields of the `BaseAddress` of entries to 
- *  index our own EPT page tables and then add the corresponding entry
- *  `BaseAddress` and the end of thepage walk.
+ * This data structure is utilized by our EPT source functions to
+ *  insert a virtual address into the paging tables.
  *
- * Note: I don't believe we need CR3 here, as CR3 holds a value which leads
- *  to our PML4E, and won't be indexed itself
+ * Each entry's `BaseAddress` field must be individually indexable via our EPT
+ *  tables (to facilitate standard VA->PA translations), so use the VA_LAYOUT
+ *  fields of the `BaseAddress` of entries to index our own EPT page tables and
+ *  then add the corresponding entry `BaseAddress` and the end of thepage walk.
  */
 typedef struct _INDEX_POINTS
 {

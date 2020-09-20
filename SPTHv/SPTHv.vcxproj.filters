@@ -39,19 +39,19 @@
     <ClCompile Include="Utils.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.c">
+    <ClCompile Include="EPT.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.c">
+    <ClCompile Include="Memory.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.c">
+    <ClCompile Include="Guest.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\sh%40dow\EPT\SPTHv\EPT.c">
+    <ClCompile Include="Handler.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\sh%40dow\EPT\SPTHv\Memory.c">
+    <ClCompile Include="Log.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -77,22 +77,19 @@
     <ClInclude Include="CPU.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.h">
+    <ClInclude Include="EPT.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.h">
+    <ClInclude Include="Memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.h">
+    <ClInclude Include="Guest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\EPT.h">
+    <ClInclude Include="Handler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\Memory.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\GuestTarget.h">
+    <ClInclude Include="Log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

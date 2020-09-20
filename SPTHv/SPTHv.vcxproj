@@ -138,23 +138,22 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\sh%40dow\EPT\SPTHv\EPT.c" />
-    <ClCompile Include="..\..\..\sh%40dow\EPT\SPTHv\Memory.c" />
-    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.c" />
-    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.c" />
-    <ClCompile Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.c" />
+    <ClCompile Include="EPT.c" />
+    <ClCompile Include="Memory.c" />
+    <ClCompile Include="Guest.c" />
+    <ClCompile Include="Handler.c" />
+    <ClCompile Include="Log.c" />
     <ClCompile Include="Driver.c" />
     <ClCompile Include="Seg.c" />
     <ClCompile Include="Utils.c" />
     <ClCompile Include="VMX.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\EPT.h" />
-    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\GuestTarget.h" />
-    <ClInclude Include="..\..\..\sh%40dow\EPT\SPTHv\Memory.h" />
-    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Guest.h" />
-    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Handler.h" />
-    <ClInclude Include="..\..\..\sh%40dow\HV-Playground\SPTHv\Log.h" />
+    <ClInclude Include="EPT.h" />
+    <ClInclude Include="Memory.h" />
+    <ClInclude Include="Guest.h" />
+    <ClInclude Include="Handler.h" />
+    <ClInclude Include="Log.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="Driver.h" />
     <ClInclude Include="MSR.h" />
