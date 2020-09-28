@@ -2,7 +2,7 @@
 
 This branch demonstrates the setup and runtime environment in which a guest in governed not only by the boundaries of our previous VMX operations, but additionally by behavioral modifications imposed by a function of Intel's VT-x called Extended Page Tables (EPT).
 
-[Compare this branch to it's base \(GuestState\)](https://github.com/calware/HV-Playground/tree/GuestState...EPT)
+[Compare this branch to it's base \(GuestState\)](https://github.com/calware/HV-Playground/compare/GuestState...EPT)
 
 ![EPT Branch Demo](./media/demo.png)
 
