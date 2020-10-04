@@ -332,6 +332,11 @@ DriverEntry(
     // [EPT] 1.2 Ensure that EPT is supported, and the features relating to our operation are supported
     NT_ASSERT( _CheckEPTWithFeatures() == TRUE );
 
+    // [EPT] 1.3 Ensure that MTRRs are supported by this processor
+    NT_ASSERT( CheckMTTRSupport() == TRUE );
+
+
+
     // [EPT] 2. Initialize our EPT structure (the EPTP, and it's PML4 table)
     NT_ASSERT( EptBuild() == TRUE );
 
@@ -368,36 +373,8 @@ DriverEntry(
 
 
 
-    // [EPT] 3. Obtain physical index points for our required physical addresses,
-    //  and insert them into the paging structures, creating new allocations where required
-
-    // [EPT] 3.1 Guest entry point
-    NT_ASSERT( EptInsertSystemVA((PVOID)GuestEntry) == TRUE );
-
-    /*
-     * Problem here, as we allocate 6 4KB pages (24KB kernel stack size), and
-     *   were only mapping the first 4KB region.
-     *
-     * Note: by subtracting one, and slicing off the last 12 bits (page offset),
-     *   we effectively lie at the top of the final page boundary of our stack allocation
-     *   (which is the only page of the stack our current guest will use)
-     */
-    UINT64 lastGuestStackPage = (
-        ((UINT64)g_LPInfo.VMStack.VA + (KERNEL_STACK_SIZE - 1)) & (UINT64)~0xFFF
-        );
-
-    // [EPT] 3.2 Guest stack
-    NT_ASSERT( EptInsertSystemVA((PVOID)lastGuestStackPage) == TRUE );
-
-    // [EPT] 3.3 Target guest function
-    NT_ASSERT( EptInsertSystemVA((PVOID)GuestTargetFn) == TRUE );
-
-    // [EPT] 3.4 Target redirection function
-    NT_ASSERT( EptInsertSystemVA((PVOID)GuestHookFn) == TRUE );
-
-    // [EPT] 3.5 HLT assembly function (used inthe guest like breakpoints
-    //  to call into our VMM for servicing)
-    NT_ASSERT( EptInsertSystemVA((PVOID)__hlt) == TRUE );
+    // [EPT] 3. Create an identity mapping for all of the memory on this system
+    NT_ASSERT( EptIdentityMapSystem() == TRUE );
 
 
 
@@ -521,7 +498,7 @@ __saved_ep_addr:
     {
         // We have an error status held in the VMCS
         instrError = 0;
-        NT_ASSERT(__vmx_vmread(VMCS_RO_VM_INSTR_ERR, (size_t*)&instrError) == VMX_OK);
+        NT_ASSERT( __vmx_vmread(VMCS_RO_VM_INSTR_ERR, (size_t*)&instrError) == VMX_OK );
         __debugbreak();
     }
 

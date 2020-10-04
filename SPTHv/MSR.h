@@ -44,6 +44,31 @@
 // EPT and VPID capability MSRs
 #define IA32_VMX_EPT_VPID_CAP           0x48C
 
+// [Table 2-2] "IA-32 Architectural MSRs (Contd.)"
+#define IA32_MTRRCAP                    0xFE
+#define IA32_MTRR_DEF_TYPE              0x2FF
+
+// [11.11.2.2] "Fixed Range MTRRs"
+//  Holds 8 64KB sub-ranges (512KB range, 00000-7FFFF)
+#define IA32_MTRR_FIX64K_00000          0x250
+//  Holds 16 16KB sub-ranges (256KB range, 80000-BFFFF)
+#define IA32_MTRR_FIX16K_80000          0x258
+#define IA32_MTRR_FIX16K_A0000          0x259
+//  Holds 64 4KB sub-ranges (256KB range, C0000-FFFFF)
+#define IA32_MTRR_FIX4K_C0000           0x268
+#define IA32_MTRR_FIX4K_C8000           0x269
+#define IA32_MTRR_FIX4K_D0000           0x26A
+#define IA32_MTRR_FIX4K_D8000           0x26B
+#define IA32_MTRR_FIX4K_E0000           0x26C
+#define IA32_MTRR_FIX4K_E8000           0x26D
+#define IA32_MTRR_FIX4K_F0000           0x26E
+#define IA32_MTRR_FIX4K_F8000           0x26F
+
+// [11.11.2.3] "Variable Range MTRRs"
+//  Note: the remainder of the physbase/physmask MSR values
+//  are increments of two past the two starting points below
+#define IA32_MTRR_PHYSBASE0             0x200
+#define IA32_MTRR_PHYSMASK0             0x201
 
 #pragma warning(push)
 

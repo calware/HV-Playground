@@ -144,6 +144,7 @@
     <ClCompile Include="Handler.c" />
     <ClCompile Include="Log.c" />
     <ClCompile Include="Driver.c" />
+    <ClCompile Include="MTRR.c" />
     <ClCompile Include="Seg.c" />
     <ClCompile Include="Utils.c" />
     <ClCompile Include="VMX.c" />
@@ -157,6 +158,7 @@
     <ClInclude Include="CPU.h" />
     <ClInclude Include="Driver.h" />
     <ClInclude Include="MSR.h" />
+    <ClInclude Include="MTRR.h" />
     <ClInclude Include="Seg.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="VMCS.h" />

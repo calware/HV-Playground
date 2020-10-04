@@ -3,6 +3,20 @@
 
 #include <wdm.h>
 
+#define CPUID_FEATURE_INFORMATION           1
+#define CPUID_ADDRESS_WIDTHS                0x80000008
+
+#define CPUID_FEATURE_MTRR_ENABLED          0x1000
+#define CPUID_PHYS_ADDR_WIDTH               0xFF
+
+typedef struct _CPUID_INFORMATION
+{
+    int EAX;
+    int EBX;
+    int ECX;
+    int EDX;
+} CPUID_INFO;
+
 #pragma warning(push)
 
 #pragma warning(disable:4201) // nonstandard extension used: nameless struct/union

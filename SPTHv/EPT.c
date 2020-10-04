@@ -33,271 +33,119 @@ EptBuild()
     return TRUE;
 }
 
-/*
- * Recursive function used internally to insert physical addresses
- *  into the EPT by traversing and, where required, allocating new
- *  tables
- */
 BOOLEAN
-_InsertEPTIdentityMapping(
-    _In_ CONST UINT8 Altitude,
-    _In_ CONST UINT64 PhysicalPageTableBase,
-    _In_ CONST UINT64 PhysicalAddress
-    )
+EptIdentityMapSystem()
 {
-    BOOLEAN result;
+    UINT16 pdpteIdx, pdeIdx, gbCount;
 
-    PVOID pageTableVA;
-    PHYSICAL_ADDRESS pageTablePA;
+    VMX_ADDRESS pdpt, pdt;
 
-    EPT_GENERIC_PAGE *pPageEntry, *pPageTable;
-    VMX_ADDRESS pageAllocation;
+    PHYSICAL_ADDRESS eptpPML4PA;
+    PVOID eptpPML4VA;
 
-    GUEST_PA_LAYOUT targetPA;
-    targetPA.All = PhysicalAddress;
+    PEPT_PML4E pPML4E;
+    PEPT_PDPTE pPDPTE;
+    PEPT_PDE pPDE;
 
-    UINT16 pageIndex;
+    UINT64 pdePageAddress;
 
-    // Obtain the index specific to this page table based on the provided altitude
-    switch ( Altitude )
-    {
-        case EPT_ALTITUDE_PML4:
-            pageIndex = (UINT16)targetPA.PML4Index;
-            break;
-        case EPT_ALTITUDE_PDPT:
-            pageIndex = (UINT16)targetPA.PDPTIndex;
-            break;
-        case EPT_ALTITUDE_PD:
-            pageIndex = (UINT16)targetPA.PDIndex;
-            break;
-        case EPT_ALTITUDE_PT:
-            pageIndex = (UINT16)targetPA.PTIndex;
-            break;
-        default:
-            pageIndex = 0;
-            NT_ASSERT( FALSE );
-            break;
-    }
+    MTRR_MEM_TYPE mtrrMemType;
 
-    pageTablePA.QuadPart = 0;
-    pageTablePA.QuadPart = PhysicalPageTableBase;
-
-    pageTableVA = MmGetVirtualForPhysical( pageTablePA );
-
-    NT_ASSERT( pageTableVA != NULL );
-
-    pPageTable = (EPT_GENERIC_PAGE*)pageTableVA;
-
-    pPageEntry = (EPT_GENERIC_PAGE*)&pPageTable[pageIndex];
-
-    // Check if we need to insert data into the EPT
-    if ( pPageEntry->All == 0 )
-    {
-        // Set every entry to have unrestricted access permissions, which
-        //  will delegate out access checks to the underlying OS
-        pPageEntry->ReadAccess    =
-        pPageEntry->WriteAccess   =
-        pPageEntry->ExecuteAccess = TRUE;
-        
-        if ( Altitude != EPT_ALTITUDE_PT )
-        {
-            // We're initializing a page table
-
-            // Allocate our table
-            NT_ASSERT(utlAllocateVMXData(PAGE_SIZE, TRUE, TRUE, &pageAllocation) == TRUE);
-
-            // Point this entry to the base address of the next table
-            pPageEntry->BaseAddress = (UINT64)pageAllocation.PA >> PAGE_OFFSET_4KB;
-        }
-        else
-        {
-            // We're initializing a PTE
-
-            /*
-             * Complete our identity mapping by setting the base address
-             *  to the guest-physical base address (thereby creating a 1:1
-             *  mapping from guest-physical addresses to underlying physical addresses)
-             */
-            pPageEntry->BaseAddress = PhysicalAddress >> PAGE_OFFSET_4KB;
-
-            /*
-             * [28.2.6.1] "Memory Type Used for Accessing EPT Paging Structures"
-             * [A.1] "Basic VMX Information", "... software may map any of these regions
-             *  or structures with the UC memory type. (This may be necessary for the MSEG
-             *  header.) Doing so is discouraged unless necessary as it will cause the
-             *  performance of software accesses to those structures to suffer."
-             *
-             * Generally, we'll always want our mappings to be of the write back (WB) memory type
-             */
-            pPageEntry->MemType = g_EPTP.MemType;
-
-            // We've walked to the end of the paging tables using our target (guest) physical address,
-            //  and created a 1:1 mapping with the host; so we're done here
-            return TRUE;
-        }
-    }
-    else if ( Altitude == EPT_ALTITUDE_PT )
-    {
-        // If the user supplied a physical address that already has a PTE
-        //  in our EPT, we gloat in our past success
-        return TRUE;
-    }
-
-    result = _InsertEPTIdentityMapping(
-        (Altitude - 1),
-        TABLE_BASE_ADDRESS( pPageEntry->All ),
-        PhysicalAddress
-        );
-
-    NT_ASSERT( result == TRUE );
-
-    return TRUE;
-}
-
-BOOLEAN
-EptInsertSystemVA(
-    _In_ CONST PVOID VirtualAddress
-    )
-{
     /*
-     * So we need to insert the physical address of our target virtual address
-     *  within the EPT. Things aren't that simple, though, as this concept holds true
-     *  for every physical address which is utilized to access the physical address
-     *  of our virtual address—think each of the page tables required to translate the
-     *  target virtual address. For this reason, you can stop thinking about virtual
-     *  addresses altogether, and think of the physical address of our virtual address
-     *  as it's own virtual address (which is still a physical address). We call this
-     *  a guest-physical address, and it must be indexable via our EPT.
+     * Extract the EPTP's PML4 base address pointer (phyiscal address)
      *
-     * If you're like me, this concept may confuse you, as the reported max width (size in bytes)
-     *  of your processor's physical addresses (seen with CPUID—see [3.3.1] "Intel® 64 Processors
-     *  and Physical Address Space") may, and likely will be less than 48 bits. But this makes sense,
-     *  as physical addresses typically are not required to index four, or any number of paging tables.
-     *  Additionally, if we assume a flat 8GB physical address space, we only need 2^33 bits to index
-     *  this region with 1-byte granularity; creating a max physical address width of 33 bits. For a
-     *  flat 16GB physical address space, we require 34 bits; 35 bits for 32GB; and 36 bits for 64GB.
-     *  You may wonder then, how we're able to index our EPT tables, and the answer seems fairly simple
-     *  (in retrospect). Excluding the requirement of a PML5 (which no processors at this moment support),
-     *  you will never have to index a PML4 table, as each PML4E indexes 512GB of memory. Each PDPTE, however,
-     *  is capable of indexing 1GB of memory. So as long as we're able to index multiple PDPTEs, we can
-     *  translate guest memory via our EPT tables. If we exclude the 16 bits of unused space at the top of a 48-bit
-     *  virtual address, and the 9 bits required to index the PML4 table, that frees up 25 bits off of the physical
-     *  address, leaving a minimum of 23 bits requied to index all 4 of our tables with 8-byte granularity;
-     *  and then subsequently index a resulting 4KB page with 1-byte granularity. Now this is not the process
-     *  of EPT translations, as the translations absolutely use 48-bits to index, and will in fact index
-     *  a PML4 table (held in our EPTP). But separate PML4 tables are only used via the CR3 register to
-     *  enforce virtual memory separation by operating systems (in the advent of segmentation being
-     *  considered deprecated for this purpose); and as such, an unrestricted physical address space
-     *  does not have the requirement for a PML4 table if it isn't indexing over 512GB of memory—the index
-     *  into the PML4 will always be zero to index the first entry. So our EPT mechanism will use 48 bits,
-     *  and address the PML4 table, but those topmost bits which way may not have set (per our max physical
-     *  address width), will be taken and always be unset (zero), and index the first entry in our PML4 table.
-     *
-     * The only other thing to mention here is that 2MB entries require 21 bits (2^21 = 1024**2) to index at
-     *  1-byte granularity, and paging tables which point to these LargePage data allocations must be aligned
-     *  on a 2MB boundary. The same is true for 1GB LargePage mappings via PDPTEs (but with more bits required).
-     *
-     * So anyway :), in order to index the target virtual address within our guest, we need to insert
-     *  every physical address that will be individually indexed by the guest in order to
-     *  obtain the final physical address for the target virtual address. These are the
-     *  physical addresses of each (of the base addresses) of the 4 tables requierd to translate the
-     *  virtual address in our guest (PML4, PDPT, PD, PT), as well as just the resulting physical address
-     *  (after a full 4-level translation) because that final physical address might get
-     *  cached in the TLB, and used as the sole index point of the desired data by the processor.
+     * Note: this operation is potentially unsafe (per future structural
+     *  changes to the EPTP and other page table's high-level bits)
      */
+    eptpPML4PA.QuadPart = g_EPTP.BaseAddress << PAGE_OFFSET_4KB;
 
-    BOOLEAN result;
+    // Obtain the EPTP's PML4 base address pointer (virtual address)
+    eptpPML4VA = MmGetVirtualForPhysical( eptpPML4PA );
 
-    PML4 pml4;
-
-    BOOLEAN modifiedIRQL = FALSE;
-
-    KIRQL entryIRQL = KeGetCurrentIrql();
-
-    // Outline our EPTP into a compatible PML4 for indexing with our general memory
-    //  helper routines
-    pml4.All = 0;
-
-    if ( entryIRQL < DISPATCH_LEVEL )
+    if ( eptpPML4VA == NULL )
     {
-        entryIRQL = KeRaiseIrqlToDpcLevel();
-        modifiedIRQL = TRUE;
+        return FALSE;
     }
 
-    // Use the system PML4 table, and format it correctly for our PML4
-    //  by removing the page offset bits (last 12 bits)
-    pml4.PhysicalAddress = ( __readcr3() >> PAGE_OFFSET_4KB );
+    // Get the EPTP's PML4 table in a usable state
+    pPML4E = (PEPT_PML4E)eptpPML4VA;
 
-    if ( modifiedIRQL == TRUE )
+    // Get a rough estimate of the physical memory
+    //  on the system (in gigabytes)
+    gbCount = GetOptimalPhysMemMapSize();
+
+    // Allocate a PDPT for the EPT (each PDPTE maps 1GB of memory)
+    NT_ASSERT( utlAllocateVMXData(PAGE_SIZE, TRUE, TRUE, &pdpt) == TRUE );
+
+    // Get the PDPT in a usable state
+    pPDPTE = (PEPT_PDPTE)pdpt.VA;
+
+    // Add this PDPT to our EPT's PML4 table in the form of a PML4E, and set
+    //  the relevant property bits for the entry
+    pPML4E[0].BaseAddress   = (UINT64)pdpt.PA >> PAGE_OFFSET_4KB;
+    pPML4E[0].ReadAccess    =
+    pPML4E[0].WriteAccess   =
+    pPML4E[0].ExecuteAccess = TRUE;
+
+    // We loop through every gigabyte of memory, represented by a PDPTE
+    for ( pdpteIdx = 0; pdpteIdx < gbCount; pdpteIdx++ )
     {
-        KeLowerIrql( entryIRQL );
+        // Allocate a PDT for our current PDPTE
+        NT_ASSERT( utlAllocateVMXData(PAGE_SIZE, TRUE, TRUE, &pdt) == TRUE );
+
+        // Get a temporary PDT pointer
+        pPDE = (PEPT_PDE)pdt.VA;
+
+        // Add this PDT to our current PDPTE, setting the relevant property bits
+        pPDPTE[pdpteIdx].BaseAddress    = (UINT64)pdt.PA >> PAGE_OFFSET_4KB;
+        pPDPTE[pdpteIdx].ReadAccess     =
+        pPDPTE[pdpteIdx].WriteAccess    =
+        pPDPTE[pdpteIdx].ExecuteAccess  = TRUE;
+
+        // Fill the PDT with PDEs corresponding to 2MB large pages, completing our 1GB mapping
+        for ( pdeIdx = 0; pdeIdx < MAX_PDE_COUNT; pdeIdx++ )
+        {
+            // Calculate the page start address
+            if (pdeIdx == 0)
+            {
+                /*
+                 * If this is the first entry in our PDT, then we know
+                 *  it starts at the beginning of a gigabyte boundary
+                 *  based on our pdpteIndex
+                 */
+
+                pPDE[pdeIdx].Ref2MB.PageAddress = (pdpteIdx * _1GB) >> PAGE_OFFSET_2MB;
+            }
+            else
+            {
+                // If this is not the first entry, we can calculate the current 
+                //  page start address by adding 2MB to the previous start address
+
+                pdePageAddress = pPDE[pdeIdx - 1].Ref2MB.PageAddress << PAGE_OFFSET_2MB;
+
+                pPDE[pdeIdx].Ref2MB.PageAddress = (pdePageAddress + _2MB) >> PAGE_OFFSET_2MB;
+            }
+
+            // Set the permission bits
+            pPDE[pdeIdx].Ref2MB.ReadAccess      =
+            pPDE[pdeIdx].Ref2MB.WriteAccess     =
+            pPDE[pdeIdx].Ref2MB.ExecuteAccess   = TRUE;
+
+            // Indicate a 2MB large page allocation
+            pPDE[pdeIdx].Ref2MB.Ref2MBPage      = TRUE;
+
+            // Obtain the memory type for this allocation
+            //  (utilizing our MTRRs)
+            MtrrGetMemType(
+                pPDE[pdeIdx].Ref2MB.PageAddress << PAGE_OFFSET_2MB,
+                _2MB,
+                &mtrrMemType
+                );
+
+            // Set the corresponding MTRR memory type
+            pPDE[pdeIdx].Ref2MB.MemType         = mtrrMemType;
+        }
     }
-
-    INDEX_POINTS targetIndexPoints = { 0 };
-
-    // Gather the physical index points of our target virtual address (every
-    //  physical address that must be present in the EPT for our target virtual address)
-    NT_ASSERT( GetPhyscialIndexPoints(pml4, VirtualAddress, &targetIndexPoints) == TRUE );
-
-    // Insert all of the required physical index points into the EPT
-
-    // Identity map the PML4
-    result = _InsertEPTIdentityMapping(
-        EPT_ALTITUDE_PML4,
-        TABLE_BASE_ADDRESS( g_EPTP.All ),
-        targetIndexPoints.PML4E.BaseAddress
-        );
-
-    NT_ASSERT( result == TRUE );
-
-    // Note, as mentioned in `VMExitHandler`, I would typically use the
-    //  `EptGetPteForSystemAddress` function here to check my insertions
-
-
-
-    // Identity map the PDPT
-    result = _InsertEPTIdentityMapping(
-        EPT_ALTITUDE_PML4,
-        TABLE_BASE_ADDRESS( g_EPTP.All ),
-        targetIndexPoints.PDPTE.BaseAddress
-        );
-
-    NT_ASSERT( result == TRUE );
-
-
-
-    // Identity map the PD
-    result = _InsertEPTIdentityMapping(
-        EPT_ALTITUDE_PML4,
-        TABLE_BASE_ADDRESS( g_EPTP.All ),
-        targetIndexPoints.PDE.BaseAddress
-        );
-
-    NT_ASSERT( result == TRUE );
-
-
-
-    // Identity map the PT
-    result = _InsertEPTIdentityMapping(
-        EPT_ALTITUDE_PML4,
-        TABLE_BASE_ADDRESS( g_EPTP.All ),
-        targetIndexPoints.PTE.BaseAddress
-        );
-
-    NT_ASSERT( result == TRUE );
-
-
-
-    // Identity map the Page
-    result = _InsertEPTIdentityMapping(
-        EPT_ALTITUDE_PML4,
-        TABLE_BASE_ADDRESS( g_EPTP.All ),
-        targetIndexPoints.Page.BaseAddress
-        );
-
-    NT_ASSERT( result == TRUE );
-
-
 
     return TRUE;
 }

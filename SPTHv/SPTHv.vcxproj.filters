@@ -54,6 +54,9 @@
     <ClCompile Include="Log.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MTRR.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="VMCS.h">
@@ -90,6 +93,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Log.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MTRR.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

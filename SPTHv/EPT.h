@@ -1,7 +1,9 @@
 #ifndef __EPT_H__
 #define __EPT_H__
 
-#include "Memory.h"
+#include <ntddk.h>
+
+#include "MTRR.h"
 
 #include "Utils.h"
 
@@ -223,25 +225,19 @@ BOOLEAN
 EptBuild();
 
 /*
- * For each virtual address this function is passed, it will insert
- *  into the EPT every physical address (all page tables, as well as the resulting
- *   physical address) required to index this virtual address, and point the final
- *   entry to the 4KB page containing the data for the initial virtual address
- *   passed as a parameter (which is the same as what the final physical address of
- *   this virtual address would point to—we never point to data with our EPT that we
- *   allocate, only existing data allocations).
+ * This will map 64GB of physical memory (which we assume is
+ *  the most a system should ever have loaded) in a way that
+ *  is indexable via our EPT.
  *
- * This function is used to quickly and easily identity map a desired
- *  virtual address in a way in which it can be indexed using the
- *  appropriate guest-physical addresses.
+ * This routine will also utilize the newly-added MTRR source
+ *  files to ensure the correct memory types are set for the
+ *  corresponding pages.
  *
- * Note: this function is only designed to work with kernel allocations
- *  in the non-paged pool.
+ * Note: this is considerably simpler than having to insert
+ *  just one 4KB EPT entry for a provided virtual address.
  */
 BOOLEAN
-EptInsertSystemVA(
-    _In_ CONST PVOID VirtualAddress
-    );
+EptIdentityMapSystem();
 
 /*
  * Get the virtual address of the physical PTE within our EPT

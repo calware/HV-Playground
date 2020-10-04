@@ -1,5 +1,73 @@
 #include "Memory.h"
 
+UINT8
+GetOptimalPhysMemMapSize()
+{
+    ULONG physPageCount;
+    UINT64 physMemBytes, approxPhysGB;
+
+    // Get the number of physical pages on the system
+    physPageCount = SharedUserData->NumberOfPhysicalPages;
+
+    // Get the number of bytes of memory available to the
+    //  system based on the physical page count
+    physMemBytes = physPageCount * PAGE_SIZE;
+
+    // Calculate a rough estimate of physical memory
+    //  (Note: the cast here acts as a floor, which is a consequence of the calculation)
+    approxPhysGB = (UINT64)(physMemBytes / _1GB);
+
+    // Because of our floor in the calculation above, we check for the
+    //  closest standard memory install, and assume that ammount
+    if ( approxPhysGB < 8 )
+    {
+        return 8;
+    }
+    else if (approxPhysGB < 16)
+    {
+        return 16;
+    }
+    else if (approxPhysGB < 24)
+    {
+        return 24;
+    }
+    else if (approxPhysGB < 32)
+    {
+        return 32;
+    }
+    else if (approxPhysGB < 64)
+    {
+        return 64;
+    }
+    else
+    {
+        // We're choosing not to support systems with > 64GB of memory
+        NT_ASSERT(FALSE);
+        return 0;
+    }
+}
+
+UINT64
+CreateMaxPhyAddrMask()
+{
+    UINT64 mask;
+    UINT8 phyAddrMSB;
+
+    CPUID_INFO cpuidInfo = { 0 };
+
+    __cpuid( (int*)&cpuidInfo, CPUID_ADDRESS_WIDTHS );
+
+    phyAddrMSB = cpuidInfo.EAX & CPUID_PHYS_ADDR_WIDTH;
+
+    // Set all of the bits up to the max specified index
+    mask = ~(MAXUINT64 << phyAddrMSB);
+
+    // Unset the last 12-bits in our mask
+    mask -= 0xFFF;
+
+    return mask;
+}
+
 BOOLEAN
 GetPhyscialIndexPoints(
     _In_ CONST PML4 PhysicalPML4,

@@ -22,10 +22,10 @@ VMExitHandler(
     UINT64 eptGuestLinAddr, eptGuestPhysAddr;
     EPT_VIOLATION_INFORMATION eptViolationInfo;
 
-    PEPT_PTE pTargetEptPte = NULL;
+    // PEPT_PTE pTargetEptPte = NULL;
 
-    PHYSICAL_ADDRESS hookFnPA;
-    hookFnPA.QuadPart = 0;
+    // PHYSICAL_ADDRESS hookFnPA;
+    // hookFnPA.QuadPart = 0;
 
 
 	__vmx_vmread( VMCS_RO_EXIT_REASON, (size_t*)&exitReason.All );
@@ -102,19 +102,19 @@ VMExitHandler(
             if (g_BreakCount == 0)
             {
                 // Obtain the EPT PTE for the desired target function
-                NT_ASSERT( EptGetPteForSystemAddress((PVOID)GuestTargetFn, 0, &pTargetEptPte) == TRUE );
+                // NT_ASSERT( EptGetPteForSystemAddress((PVOID)GuestTargetFn, 0, &pTargetEptPte) == TRUE );
 
                 // Obtain the physical address of our hook function
-                hookFnPA = MmGetPhysicalAddress( (PVOID)GuestHookFn );
+                // hookFnPA = MmGetPhysicalAddress( (PVOID)GuestHookFn );
 
-                NT_ASSERT( hookFnPA.QuadPart != 0 );
+                // NT_ASSERT( hookFnPA.QuadPart != 0 );
 
                 /*
                  * Both `GuestTargetFn` and `GuestHookFn` begin at the start
                  *  of their respective pages; so we replace the page base address of `GuestTargetFn`
                  *  with `GuestHookFn` to effectively hook calls to `GuestTargetFn`
                  */
-                pTargetEptPte->BaseAddress = hookFnPA.QuadPart >> PAGE_OFFSET_4KB;
+                // pTargetEptPte->BaseAddress = hookFnPA.QuadPart >> PAGE_OFFSET_4KB;
 
                 // At this point, we've successfully redirected the PTE for `GuestTargetFn` to point
                 //  to the location of `GuestHookFn`, so we're done here

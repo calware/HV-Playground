@@ -5,15 +5,28 @@
 
 #include <intrin.h>
 
+#include "CPU.h"
+
+#define _2MB                            (1024 * 1024 * 2)
+#define _1GB                            (1024 * 1024 * 1024)
+
 #define PAGESIZE_BIT                    0x40
 #define PAGE_OFFSET_4KB                 12
+#define PAGE_OFFSET_2MB                 21
 #define PAGING_TABLE_BASE_ADDRESS_MASK  0xFFFFFF000
+
+#define MAX_PDPT_COUNT                  512
+#define MAX_PDE_COUNT                   512
+#define MAX_PTE_COUNT                   512
 
 // Note: this can only be used on tables which map 4KB regions
 //  Pages which map 'large' (1GB/2MB) regions are not supported
 #define TABLE_BASE_ADDRESS(a) ((UINT64)(a & PAGING_TABLE_BASE_ADDRESS_MASK))
 
 #define LARGE_PAGE_MAPPING(a) ((a & PAGESIZE_BIT) == 1)
+
+#define PAGE_SIZE_2MB (1024 * 1024 * 2)
+#define PAGES_IN_RANGE(r) (( r % PAGE_SIZE == 0 ? r / PAGE_SIZE : NT_ASSERT(FALSE) ))
 
 #pragma warning(push)
 
@@ -144,6 +157,19 @@ MmGetVirtualForPhysical(
 //
 // Function definitions
 //
+
+// Get the closest standard physical memory intallation
+//  size for the system (rounding up).
+UINT8
+GetOptimalPhysMemMapSize();
+
+/*
+ * Get the correct physical address mask (excluding the
+ *  final 12-bits) for the system based on the width of physical addresses.
+ * Note: this mask should be used instead of the `TABLE_BASE_ADDRESS` macro.
+ */
+UINT64
+CreateMaxPhyAddrMask();
 
 _IRQL_requires_min_(PASSIVE_LEVEL)
 _IRQL_requires_max_(HIGH_LEVEL)

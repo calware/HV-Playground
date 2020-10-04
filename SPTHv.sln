@@ -8,7 +8,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{82B800D4-557E-48D2-BD9E-514C7549A4D1}"
 	ProjectSection(SolutionItems) = preProject
 		commands.json = commands.json
-		scripts\Revert.bat = scripts\Revert.bat
 		scripts\UploadExecute.bat = scripts\UploadExecute.bat
 	EndProjectSection
 EndProject
