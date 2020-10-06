@@ -19,8 +19,6 @@ VMExitHandler(
 	VM_EXIT_REASON exitReason;
 	exitReason.All = 0;
 
-    UNREFERENCED_PARAMETER( GuestContext );
-
 	__vmx_vmread( VMCS_RO_EXIT_REASON, (size_t*)&exitReason.All );
 
 	if ( exitReason.EntryFailure == TRUE )
