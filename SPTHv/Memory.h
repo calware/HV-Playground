@@ -7,6 +7,7 @@
 
 #include "CPU.h"
 
+#define _4KB                            4096
 #define _2MB                            (1024 * 1024 * 2)
 #define _1GB                            (1024 * 1024 * 1024)
 

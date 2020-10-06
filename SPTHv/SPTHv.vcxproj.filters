@@ -109,5 +109,8 @@
     <MASM Include="rawhandler.asm">
       <Filter>Source Files\asm</Filter>
     </MASM>
+    <MASM Include="eptintrin.asm">
+      <Filter>Source Files\asm</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

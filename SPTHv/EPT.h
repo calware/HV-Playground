@@ -9,6 +9,10 @@
 
 #define PDE_2MB_REF                 0x80
 #define PAGE_TABLE_ENTRY_COUNT      (PAGE_SIZE / sizeof(UINT64))
+#define EPT_CACHED_PT_COUNT         20
+#define EPT_PAGE_PRESENT_MASK       7
+
+C_ASSERT( EPT_CACHED_PT_COUNT < 255 );
 
 /*
  * To verify this is actually how the processor interprets guest-physical
@@ -206,6 +210,32 @@ typedef union _EPT_PAGE_ENTRY_GENERIC
 
 
 
+/*
+ * This structure is used to hold cached
+ *  page tables (PTs), which will be used
+ *  when we are lacking additional kernel
+ *  components to replace 2MB large page
+ *  PDEs with PDEs pointing to PTs mapping
+ *  4KB pages.
+ */
+typedef struct _EPT_CACHED_PT
+{
+    BOOLEAN Available;
+    PEPT_PTE PageTable;
+    UINT64 PageTablePA;
+} EPT_CACHED_PT, *PEPT_CACHED_PT;
+
+extern EPT_CACHED_PT g_pCachedPTList[EPT_CACHED_PT_COUNT];
+
+
+
+// "INVEPT — Invalidate Translations Derived from EPT"
+typedef enum __INVEPT_TYPE
+{
+    INVEPT_TYPE_SINGLE_CONTEXT = 1,
+    INVEPT_TYPE_GLOBAL_CONTEXT
+} INVEPT_TYPE;
+
 
 //
 // Global definitions
@@ -219,10 +249,34 @@ extern EPTP g_EPTP;
 // Function definitions
 //
 
+// Assembly intrinsic (see './asm/eptintrin.asm')
+//  NOTE: this function should not be called on it's own!
+//  instead, use the EptInvalidateTlb function below!
+VOID
+__invept(
+    CONST UINT64 Type,
+    CONST UINT64 Eptp
+    );
+
 // Initializes the EPTP by allocating a PML4 table, and sets up
 //  the appropriate flags for registration with the VMCS.
 BOOLEAN
 EptBuild();
+
+VOID
+EptInitializeCache();
+
+BOOLEAN
+EptInvalidateTlb(
+    CONST INVEPT_TYPE Type
+    );
+
+BOOLEAN
+EptConvertLargePagePde(
+    _In_ CONST BOOLEAN UseCache,
+    _Inout_ PEPT_PDE CONST Pde,
+    _Out_opt_ PEPT_PTE* CONST Pt
+    );
 
 /*
  * This will map 64GB of physical memory (which we assume is
@@ -239,30 +293,19 @@ EptBuild();
 BOOLEAN
 EptIdentityMapSystem();
 
-/*
- * Get the virtual address of the physical PTE within our EPT
- *  that points to either the passed virtual address, or passed
- *  physical address.
- *
- * To reiterate, the result of this function is a pointer
- *  to a PTE that is used in EPT translations by the processor
- *  to access physical guest data.
- *
- * Using this data, one can effectively modify the behavior of
- *  translations on 4KB data regions resulting from our EPT.
- *
- * Note: this only works for allocations out of the nonpaged pool, much
- *  like the function above.
- */
 BOOLEAN
-EptGetPteForSystemAddress(
-    _In_opt_ CONST PVOID SystemVA,
-    _In_opt_ CONST UINT64 SystemPA,
-    _Inout_ PEPT_PTE* CONST PTE
+EptGetPte(
+    _In_ CONST BOOLEAN VmmRequest,
+    _In_ CONST PHYSICAL_ADDRESS TargetPa,
+    _Inout_ PEPT_PTE* CONST Pte
     );
 
-// Indexes our EPT table, and removes every allocation (including deallocating
-//  the page tables we allocated when inserting addresses into the EPT).
+/*
+ * Indexes our EPT table, and removes every allocation (including deallocating
+ *  the page tables we allocated when inserting addresses into the EPT).
+ * Additionally, this function has been fitted to account for the deallocation
+ *  of cached PTs as well.
+ */
 BOOLEAN
 EptTeardown();
 

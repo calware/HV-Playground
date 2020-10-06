@@ -165,6 +165,7 @@
     <ClInclude Include="VMX.h" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="eptintrin.asm" />
     <MASM Include="rawhandler.asm" />
     <MASM Include="guestintrin.asm" />
     <MASM Include="segintrin.asm" />

@@ -245,7 +245,7 @@ _CheckEPTWithFeatures()
     allowedSecondaryControls.All = MAXUINT32;
 
     //  ([31.5.1] "Algorithms for Determining VMX Capabilities")
-    allowedSecondaryControls.All &= (__readmsr(IA32_VMX_PROCBASED_CTLS2) >> 32);
+    allowedSecondaryControls.All &= ( __readmsr(IA32_VMX_PROCBASED_CTLS2) >> 32 );
 
     // Check if EPT is supported
     if ( allowedSecondaryControls.EnableEPT == FALSE )
@@ -270,6 +270,14 @@ _CheckEPTWithFeatures()
     {
         return FALSE;
     }
+
+    // Future assertions prevent single-context EPT invalidations
+    if ( eptFeatures.INVEPTAllContext == FALSE )
+    {
+        return FALSE;
+    }
+
+    // maybe check that all-context invalidation is okay?
 
     // Check if the required EPT features are supported
     if ( eptFeatures.EPT4PageWalk == FALSE )
@@ -340,6 +348,10 @@ DriverEntry(
     // [EPT] 2. Initialize our EPT structure (the EPTP, and it's PML4 table)
     NT_ASSERT( EptBuild() == TRUE );
 
+    // [EPT] 3. Initialize our page table cache for large page PDE replacements
+    //  within our VMM
+    EptInitializeCache();
+
     
 
 	// See [31.6] "Preparation and Launching a Virtual Machine" for "the minimal steps required by the VMM to set up and launch a guest VM"
@@ -373,7 +385,7 @@ DriverEntry(
 
 
 
-    // [EPT] 3. Create an identity mapping for all of the memory on this system
+    // [EPT] 4. Create an identity mapping for all of the memory on this system
     NT_ASSERT( EptIdentityMapSystem() == TRUE );
 
 
@@ -477,7 +489,7 @@ DriverEntry(
     __vmx_vmwrite( VMCS_CTRL_CR0_READ_SHADOW, __readcr0() );
     __vmx_vmwrite( VMCS_CTRL_CR4_READ_SHADOW, __readcr4() );
 
-    // [EPT] 4. Write the EPTP to our VMCS
+    // [EPT] 5. Write the EPTP to our VMCS
     NT_ASSERT( __vmx_vmwrite(VMCS_CTRL_EPT_POINTER_FULL, g_EPTP.All) == VMX_OK );
 
 

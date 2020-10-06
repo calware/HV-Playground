@@ -1,6 +1,7 @@
 #include "EPT.h"
 
 EPTP g_EPTP;
+EPT_CACHED_PT g_pCachedPTList[EPT_CACHED_PT_COUNT];
 
 BOOLEAN
 EptBuild()
@@ -29,6 +30,185 @@ EptBuild()
 
     // We're not using the accessed or dirty flags in our EPT entries
     g_EPTP.EnableAccessedDirty = FALSE;
+
+    return TRUE;
+}
+
+VOID
+EptInitializeCache()
+{
+    UINT8 cacheIdx;
+    PEPT_CACHED_PT pCachedPT;
+
+    VMX_ADDRESS pageTable;
+
+    RtlSecureZeroMemory( (PVOID)&g_pCachedPTList, sizeof(g_pCachedPTList) );
+
+    for ( cacheIdx = 0; cacheIdx < EPT_CACHED_PT_COUNT; cacheIdx++ )
+    {
+        pCachedPT = &g_pCachedPTList[cacheIdx];
+
+        NT_ASSERT( utlAllocateVMXData(PAGE_SIZE, TRUE, TRUE, &pageTable) == TRUE );
+
+        pCachedPT->PageTable = (PEPT_PTE)pageTable.VA;
+        pCachedPT->PageTablePA = (UINT64)pageTable.PA;
+
+        pCachedPT->Available = TRUE;
+    }
+}
+
+BOOLEAN
+EptInvalidateTlb(
+    CONST INVEPT_TYPE Type
+    )
+{
+    EPT_VPID_CAP eptCap;
+
+    eptCap.All = __readmsr( IA32_VMX_EPT_VPID_CAP );
+
+    // This plus prior preliminary checks prevents INVEPT from failing
+    if ( Type == INVEPT_TYPE_SINGLE_CONTEXT && eptCap.INVEPTSingleContext == FALSE )
+    {
+        return FALSE;
+    }
+    else if ( Type == INVEPT_TYPE_GLOBAL_CONTEXT && eptCap.INVEPTAllContext == FALSE )
+    {
+        return FALSE;
+    }
+
+    __invept( Type, g_EPTP.All );
+
+    return TRUE;
+}
+
+/*
+ * Note: my testing machine isn't 1511+, so I can't use the
+ *  newly-added KeGetEffectiveIrql here, instead of having
+ *  a `UseCache` parameter. If your machine is updated, you
+ *  should use KeGetEffectiveIrql instead.
+ */
+BOOLEAN
+EptConvertLargePagePde(
+    _In_ CONST BOOLEAN UseCache,
+    _Inout_ PEPT_PDE CONST Pde,
+    _Out_opt_ PEPT_PTE* CONST Pt
+    )
+{
+    UINT8 cacheIdx;
+    PEPT_CACHED_PT pCachedEntry;
+
+    PEPT_PTE pageTable = NULL, tableEntry;
+    UINT64 pageTablePa = 0;
+    VMX_ADDRESS tableAllocation;
+
+    UINT64 pde2MBRangeStart, ptePrevRangeStart;
+
+    UINT16 pteIdx;
+
+    EPT_PDE newPde = { 0 };
+
+    // Ensure this PDE is both present, and marked as a large page allocation
+    if ( Pde->Ref2MB.Ref2MBPage == FALSE || (Pde->All & EPT_PAGE_PRESENT_MASK) == 0 )
+    {
+        return FALSE;
+    }
+
+    pde2MBRangeStart = Pde->Ref2MB.PageAddress << PAGE_OFFSET_2MB;
+
+    if (UseCache == TRUE)
+    {
+        // We're using the cache to obtain our page table allocation
+        //  (typically seen in the VMM)
+        for ( cacheIdx = 0; cacheIdx < EPT_CACHED_PT_COUNT; cacheIdx++ )
+        {
+            pCachedEntry = &g_pCachedPTList[cacheIdx];
+
+            if ( pCachedEntry->Available == TRUE )
+            {
+                pageTable = pCachedEntry->PageTable;
+                pageTablePa = pCachedEntry->PageTablePA;
+
+                // This entry is no longer usable
+                pCachedEntry->Available = FALSE;
+
+                break;
+            }
+            else if ( cacheIdx == EPT_CACHED_PT_COUNT - 1 )
+            {
+                // We didn't have a free cache entry, so we fail here
+                return FALSE;
+            }
+        }
+    }
+    else
+    {
+        // We're allocating a new page table
+        //  (Note: unsafe assumption of current IRQL here)
+        if ( utlAllocateVMXData(PAGE_SIZE, TRUE, TRUE, &tableAllocation) == FALSE )
+        {
+            return FALSE;
+        }
+
+        pageTable = (PEPT_PTE)tableAllocation.VA;
+        pageTablePa = (UINT64)tableAllocation.PA;
+    }
+ 
+    // Fill this PT with the range encapsulated by our 2MB PDE
+    for ( pteIdx = 0; pteIdx < MAX_PTE_COUNT; pteIdx++ )
+    {
+        tableEntry = &pageTable[pteIdx];
+
+        // Set PTE permission bits
+        tableEntry->ReadAccess      =
+        tableEntry->WriteAccess     =
+        tableEntry->ExecuteAccess   = TRUE;
+
+        // Calculate the base address for this 4KB page
+        if ( pteIdx == 0 )
+        {
+            /*
+             * We're starting at the same address the PDE started at
+             *  the only difference is that the user gets 12-bits
+             *  instead of 21-bits to index this region (4KB at 1-byte granularity instead of 2MB)
+             */
+
+            tableEntry->BaseAddress = pde2MBRangeStart >> PAGE_OFFSET_4KB;
+        }
+        else
+        {
+            // Take the the base address of the previous 4KB PTE, convert it
+            //  to an actual physical addrses, add 4KB, then write it back as PFN
+
+            ptePrevRangeStart = pageTable[pteIdx - 1].BaseAddress << PAGE_OFFSET_4KB;
+
+            tableEntry->BaseAddress = (ptePrevRangeStart + _4KB) >> PAGE_OFFSET_4KB;
+        }
+    }
+
+    // Convert the large page PDE to point to our newly-created PT of 4KB PTEs
+
+    //  Clone the permission bits
+    newPde.RefPT.ReadAccess         = Pde->Ref2MB.ReadAccess;
+    newPde.RefPT.WriteAccess        = Pde->Ref2MB.WriteAccess;
+    newPde.RefPT.ExecuteAccess      = Pde->Ref2MB.ExecuteAccess;
+    newPde.RefPT.UserExecuteAccess  = Pde->Ref2MB.UserExecuteAccess;
+
+    //  Set the new page table base address (physical address!)
+    newPde.RefPT.BaseAddress        = pageTablePa >> PAGE_OFFSET_4KB;
+
+    //  Overwrite the existing PDE
+    Pde->All = newPde.All;
+
+    // Return to the user the newly-inserted page table base
+    //  address if they asked for it
+    if ( Pt != NULL )
+    {
+        *Pt = (PEPT_PTE)pageTable;
+    }
+
+    // Finally, we've changed a potentially cached paging entry,
+    //  so we need to invalidate the TLB (unsafe assumption here)
+    NT_ASSERT( EptInvalidateTlb(INVEPT_TYPE_GLOBAL_CONTEXT) == TRUE );
 
     return TRUE;
 }
@@ -151,96 +331,109 @@ EptIdentityMapSystem()
 }
 
 BOOLEAN
-EptGetPteForSystemAddress(
-    _In_opt_ CONST PVOID SystemVA,
-    _In_opt_ CONST UINT64 SystemPA,
-    _Inout_ PEPT_PTE* CONST PTE
+EptGetPte(
+    _In_ CONST BOOLEAN VmmRequest,
+    _In_ CONST PHYSICAL_ADDRESS TargetPa,
+    _Inout_ PEPT_PTE* CONST Pte
     )
 {
-    UINT8 tableLevel;
-    UINT16 tableIndex;
-    EPT_GENERIC_PAGE *pPageEntry, *pPageTable;
+    UINT8 altitude;
 
-    GUEST_PA_LAYOUT guestPA;
-    PHYSICAL_ADDRESS tableBasePA, targetPA;
+    PVOID eptpPMl4Va = NULL;
+    PHYSICAL_ADDRESS eptpPml4Pa;
 
-    if ( (SystemVA == NULL && SystemPA == 0)
-        || (SystemVA != NULL && SystemPA != 0) )
-    {
-        return FALSE;
-    }
+    PEPT_PML4E pPml4;
+    PEPT_PTE pPt;
 
-    if ( SystemVA != NULL )
-    {
-        targetPA = MmGetPhysicalAddress( SystemVA );
+    PEPT_GENERIC_PAGE pGenericTable, pGenericEntry;
 
-        if ( targetPA.QuadPart == 0 )
-        {
-            return FALSE;
-        }
-    }
-    else
-    {
-        // SystemPA != NULL, per the checks by our above predicates
-        targetPA.QuadPart = SystemPA;
-    }
+    GUEST_PA_LAYOUT paLayout;
+    UINT64 offset = 0;
+    PHYSICAL_ADDRESS tableBasePa;
+    PVOID tableBaseVa;
     
-    guestPA.All = targetPA.QuadPart;
+    // Obtain the EPT's PML4 physical base address
+    eptpPml4Pa.QuadPart = g_EPTP.BaseAddress << PAGE_OFFSET_4KB;
 
-    // Gather our initial table address
-    tableBasePA.QuadPart = TABLE_BASE_ADDRESS( g_EPTP.All );
+    // Obtain the EPT's PML4 virtual base address
+    eptpPMl4Va = MmGetVirtualForPhysical( eptpPml4Pa );
+    NT_ASSERT( eptpPMl4Va != NULL );
 
-    // Map and index each of our page tables
-    //  Note: sloppy way to avoid another recursive function (or using
-    //  GetPhysicalIndexPoints)
+    // Get this PML4 address in a usable form
+    pPml4 = (PEPT_PML4E)eptpPMl4Va;
 
-    for ( tableLevel = EPT_ALTITUDE_PML4, tableIndex = 0; tableLevel > 0; tableLevel-- )
+    // Convert the provided PHYSICAL_ADDRESS to obtain table indeces
+    paLayout.All = TargetPa.QuadPart;
+
+    // Set our initial physical table base
+    tableBasePa.QuadPart = eptpPml4Pa.QuadPart;
+
+    // Iterate our EPT tables and attempt to locate the desired PA
+    for ( altitude = 4; altitude > 0; altitude-- )
     {
-        // Grab the index for this page table
-        switch ( tableLevel )
+        // Need to figure out what the bit offset into the current
+        //  table is
+        switch (altitude)
         {
             case EPT_ALTITUDE_PML4:
-                tableIndex = (UINT16)guestPA.PML4Index;
+                offset = paLayout.PML4Index;
                 break;
             case EPT_ALTITUDE_PDPT:
-                tableIndex = (UINT16)guestPA.PDPTIndex;
+                offset = paLayout.PDPTIndex;
                 break;
             case EPT_ALTITUDE_PD:
-                tableIndex = (UINT16)guestPA.PDIndex;
+                offset = paLayout.PDIndex;
                 break;
             case EPT_ALTITUDE_PT:
-                tableIndex = (UINT16)guestPA.PTIndex;
+                offset = paLayout.PTIndex;
                 break;
         }
 
-        // Grab the virtual address for this page table
-        pPageTable = (EPT_GENERIC_PAGE*)MmGetVirtualForPhysical( tableBasePA );
+        // Get the virtual address of the current physical table base address
+        tableBaseVa = MmGetVirtualForPhysical( tableBasePa );
 
-        if ( (PVOID)pPageTable == NULL )
+        if ( tableBaseVa == NULL )
         {
             return FALSE;
         }
 
-        // Get the entry specified by our 'guest-physical address'
-        pPageEntry = &pPageTable[tableIndex];
+        pGenericTable = (PEPT_GENERIC_PAGE)tableBaseVa;
 
-        // Ensure that we actually have an entry at this location
-        if ( pPageEntry->All == 0 )
-        {
-            return FALSE;
-        }
+        // Obtain the target entry in this page table
+        pGenericEntry = &pGenericTable[offset];
 
-        // If pPageEntry points to a page table, then we need to do this again
-        if (tableLevel != EPT_ALTITUDE_PT)
+        // Possibility for a large-page PDE here which we may need to split
+        if ( altitude == EPT_ALTITUDE_PD && pGenericEntry->LargePage == TRUE )
         {
-            tableBasePA.QuadPart = TABLE_BASE_ADDRESS( pPageEntry->All );
-        }
-        else
-        {
-            // pPageEntry points to a PTE, and so we feed that back to the caller
-            *PTE = (PEPT_PTE)pPageEntry;
+            /*
+             * Convert this 2MB large page entry into a standard PDE
+             *  mapping a PT holding 512 4KB PTEs, and obtain
+             *  the new PT's virtual base address
+             */
+
+            if ( EptConvertLargePagePde(VmmRequest, (PEPT_PDE)pGenericEntry, &pPt) == FALSE )
+            {
+                return FALSE;
+            }
+
+            // The above function returns to us the virtual base address
+            //   of the newly-inserted page table, so all we have to do is index it
+
+            *Pte = &pPt[paLayout.PTIndex];
+
             return TRUE;
         }
+        else if ( altitude == EPT_ALTITUDE_PT )
+        {
+            *Pte = (PEPT_PTE)pGenericEntry;
+
+            return TRUE;
+        }
+
+        // We're not a large page, and we're not a 4KB PTE, so we need to index further...
+
+        //  Get the next table base address and continue the loop
+        tableBasePa.QuadPart = pGenericEntry->BaseAddress << PAGE_OFFSET_4KB;
     }
 
     return FALSE;
@@ -347,6 +540,26 @@ _TeardownEPTTable(
 BOOLEAN
 EptTeardown()
 {
+    UINT8 cacheIdx;
+    PEPT_CACHED_PT pCacheEntry;
+
+    /*
+     * Teardown the unused cache entries here (the private
+     *  _TeardownEPTTable function, utilized below, will
+     *  take care of used cache entries)
+     */
+    for ( cacheIdx = 0; cacheIdx < EPT_CACHED_PT_COUNT; cacheIdx++ )
+    {
+        pCacheEntry = &g_pCachedPTList[cacheIdx];
+
+        if (pCacheEntry->Available == TRUE)
+        {
+            MmFreeContiguousMemory( (PVOID)pCacheEntry->PageTable );
+
+            pCacheEntry->Available = FALSE;
+        }
+    }
+
     /*
      * Instruct the internal `_TeardownEPTTable` function to index 4 levels,
      *  and start with the base address held in the EPTP (PML4 table); effectively

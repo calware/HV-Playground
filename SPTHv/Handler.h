@@ -42,6 +42,20 @@ extern PCONTEXT g_preLaunchCtx;
 
 
 //
+// Structural definitions
+//
+
+typedef struct _EPT_SPLITTING_REGISTRATION
+{
+    PEPT_PTE TargetPte;
+    EPT_PTE OriginalPte;
+    UINT64 TargetBaseAddress;
+    UINT64 SwapBaseAddress;
+} EPT_SPLIT_REG;
+
+
+
+//
 // Function definitions
 //
 VOID
