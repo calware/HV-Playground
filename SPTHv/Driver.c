@@ -245,6 +245,9 @@ DriverEntry(
 	g_CR0.All = __readcr0();
 	g_CR4.All = __readcr4();
 
+    // Capture the initial stack base + limit
+    GetPrcbStackEntries( &g_InitialStackBase, &g_InitialStackLimit );
+
 
 
     // Set our globally visible pre-launch context structure
@@ -265,10 +268,18 @@ DriverEntry(
 	//	(Note: this isn't necessarily required for just the test, as the guest doesn't perform any stack operations)
 	NT_ASSERT( utlAllocateVMXData( KERNEL_STACK_SIZE, FALSE, FALSE, &g_LPInfo.VMStack ) == TRUE );
 
+    // Grab the base and limit for our guest software stack
+    g_GuestStackLimit = (UINT64)g_LPInfo.VMStack.VA;
+    g_GuestStackBase = g_GuestStackLimit + KERNEL_STACK_SIZE;
+
 
 
 	// 2. Allocate a stack for the VMM (host); this will get loaded on VM-exits, and be used by the exit handler
 	NT_ASSERT( utlAllocateVMXData( KERNEL_STACK_SIZE, FALSE, FALSE, &g_LPInfo.HostStack ) == TRUE );
+
+    // Grab the base and limit for our VMM stack
+    g_VMMStackLimit = (UINT64)g_LPInfo.HostStack.VA;
+    g_VMMStackBase = g_VMMStackLimit + KERNEL_STACK_SIZE;
 
 
 

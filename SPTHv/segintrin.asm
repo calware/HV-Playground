@@ -108,4 +108,13 @@ __lgdt PROC
 	ret
 __lgdt ENDP
 
+
+;
+; Read the stack pointer
+;
+__readsp PROC
+    mov rax, rsp
+    ret
+__readsp ENDP
+
 end

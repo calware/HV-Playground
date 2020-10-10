@@ -9,11 +9,20 @@ GuestEntry()
      *  the facilitation of more complicated guest and VMM operations
      */
 
-    unsigned char a = 0x88;
+    UINT8 status;
 
     __hlt();
 
-    a = 0x99;
+    __try
+    {
+        __vmx_vmlaunch();
+
+        status = 0xAA;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        status = 0xBB;
+    }
 
     __hlt();
 }

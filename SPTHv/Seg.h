@@ -106,6 +106,9 @@ extern UINT16 __readgs();
 extern UINT16 __readldtr();
 extern UINT16 __readtr();
 
+// Debugging
+extern UINT64 __readsp();
+
 extern void __sgdt(
     _Inout_ PSYSTEM_TABLE_REGISTER pGDTR
     );

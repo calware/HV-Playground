@@ -98,6 +98,23 @@ _VMREAD MACRO
     ; Result in AL (0 = success, 1 = failed & status in vmcs, 2 = failed & no status)
 ENDM
 
+; rcx = base, rdx = limit
+SwitchPrcbStackEntries PROC
+    mov rax, gs:[188h]      ; rax = PKTHREAD CurrentThread
+    mov [rax+38h], rcx      ; CurrentThread.StackBase
+    mov [rax+30h], rdx      ; CurrentThread.StackLimit
+    ret
+SwitchPrcbStackEntries ENDP
+
+GetPrcbStackEntries PROC
+    mov rax, gs:[188h]
+    mov rbx, [rax+38h]
+    mov [rcx], rbx
+    mov rbx, [rax+30h]
+    mov [rdx], rbx
+    ret
+GetPrcbStackEntries ENDP
+
 RawHandler PROC
     sub rsp, SIZEOF CONTEXT_FRAME_LENGTH    ; Allocate room on our stack for the context structure (doing this first for alignment for XMM operations)
 

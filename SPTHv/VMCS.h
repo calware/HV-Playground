@@ -438,6 +438,33 @@ typedef union _VM_EXIT_REASON
     UINT32 All;
 } VM_EXIT_REASON;
 
+// [24.8.3] "VM-Entry Controls for Event Injection"
+typedef union _VM_ENTRY_INTERRUPT_INFORMATION_FIELD
+{
+    struct
+    {
+        UINT32 Vector : 8;                          // 0-7
+        UINT32 InterruptType : 3;                   // 8-10
+        UINT32 DeliverError : 1;                    // 11
+        UINT32 Reserved0 : 19;                      // 12-30
+        UINT32 Valid : 1;                           // 31
+    };
+    UINT32 All;
+} VM_ENTRY_INT_INFO_FIELD;
+
+// [24.8.3] "VM-Entry Controls for Event Injection"
+typedef enum _VM_INTERRUPT_TYPES
+{
+    VM_INT_TYPE_EXTERNAL_INTERRUPT,
+    VM_INT_TYPE_RESERVED,
+    VM_INT_TYPE_NMI,
+    VM_INT_TYPE_HARDWARE_EXCEPTION,
+    VM_INT_TYPE_SOFTWARE_INTERRUPT,
+    VM_INT_TYPE_PRIVILEGED_SOFTWARE_EXCEPTION,
+    VM_INT_TYPE_SOFTWARE_EXCEPTION,
+    VM_INT_TYPE_OTHER_EVENT
+} VM_INT_TYPE;
+
 #pragma warning(pop)
 
 #endif // __VMCS_H__

@@ -5,6 +5,7 @@
 
 #include "VMCS.h"
 #include "VMX.h"
+#include "CPU.h"
 
 #include "Log.h"
 
@@ -25,6 +26,22 @@ RestoreContext(
     _In_ PCONTEXT ContextRecord
     );
 
+// Function that will be used to switch out the CurrentThread's saved stack base & bound combination
+extern
+VOID
+SwitchPrcbStackEntries(
+    _In_ UINT64 StackBase,
+    _In_ UINT64 StackLimit
+    );
+
+// Function used to get the CurrentThread's stack base and bounds
+extern
+VOID
+GetPrcbStackEntries(
+    _Inout_ PUINT64 StackBase,
+    _Inout_ PUINT64 StackLimit
+    );
+
 
 
 //
@@ -34,6 +51,13 @@ RestoreContext(
 static UINT8 g_BreakCount;
 
 extern PCONTEXT g_preLaunchCtx;
+
+extern UINT64 g_GuestStackBase;
+extern UINT64 g_GuestStackLimit;
+extern UINT64 g_VMMStackBase;
+extern UINT64 g_VMMStackLimit;
+extern UINT64 g_InitialStackBase;
+extern UINT64 g_InitialStackLimit;
 
 
 

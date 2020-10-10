@@ -114,4 +114,33 @@ typedef union _CR4
 
 #pragma warning(pop)
 
+// [6.15] "Exception and Interrupt Reference"
+typedef enum _INTERRUPT_VECTOR
+{
+    // Citations to each of the following can be found within
+    //  volume 3A of the Intel SDM under the parent chapter
+
+    INT_VEC_DE,         // [6-24] "Interrupt 0 — Divide Error Exception (#DE)"
+    INT_VEC_DB,         // [6-25] "Interrupt 1 — Debug Exception (#DB)"
+    INT_VEC_NMI,        // [6-27] "Interrupt 2 — NMI Interrupt"
+    INT_VEC_BP,         // [6-28] "Interrupt 3 — Breakpoint Exception (#BP)"
+    INT_VEC_OF,         // [6-29] "Interrupt 4 — Overflow Exception (#OF)"
+    INT_VEC_BR,         // [6-30] "Interrupt 5 — BOUND Range Exceeded Exception (#BR)"
+    INT_VEC_UD,         // [6-31] "Interrupt 6 — Invalid Opcode Exception (#UD)"
+    INT_VEC_NM,         // [6-32] "Interrupt 7 — Device Not Available Exception (#NM)"
+    INT_VEC_DF,         // [6-33] "Interrupt 8 — Double Fault Exception (#DF)"
+    INT_VEC_CSO,        // [6-35] "Interrupt 9 — Coprocessor Segment Overrun"
+    INT_VEC_TS,         // [6-36] "Interrupt 10 — Invalid TSS Exception (#TS)"
+    INT_VEC_NP,         // [6-38] "Interrupt 11 — Segment Not Present (#NP)"
+    INT_VEC_SS,         // [6-40] "Interrupt 12 — Stack Fault Exception (#SS)"
+    INT_VEC_GP,         // [6-41] "Interrupt 13 — General Protetion Exception (#GP)"
+    INT_VEC_PF,         // [6-44] "Interrupt 14 — [6-44] "Interrupt 14 — Page-Fault Exception (#PF)"
+    INT_VEC_MF = 16,    // [6-47] "Interrupt 16 — x87 FPU Floating-Point Error (#MF)"
+    INT_VEC_AC,         // [6-49] "Interrupt 17 — Alignment Check Exception (#AC)"
+    INT_VEC_MC,         // [6-51] "Interrupt 18 — Machine-Check Exception (#MC)"
+    INT_VEC_XM,         // [6-52] "Interrupt 19 — SIMD Floating-Point Exception (#XM)"
+    INT_VEC_VE,         // [6-54] "Interrupt 20 — Virtualization Exception (#VE)"
+    INT_VEC_CP          // [6-55] "Interrupt 21 — Control Protection Exception (#CP)"
+} INT_VECTOR;
+
 #endif // __CPU_H__

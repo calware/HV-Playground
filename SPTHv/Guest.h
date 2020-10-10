@@ -3,6 +3,8 @@
 
 #include <wdm.h>
 
+#include <intrin.h>
+
 
 
 //
@@ -12,6 +14,7 @@
 extern void __hlt();
 
 extern void RawGuestEntry();
+
 
 
 //
