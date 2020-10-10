@@ -7,14 +7,12 @@ As we move past the initial design of our hypervisor—which is only what's requ
 
 Below you will find a list of the aforementioned branches.
 
-# Completed Branches
+# Branches
   * [**master**](https://github.com/calware/HV-Playground) - Demonstrates the minimum possible design required to enter into VMX operation and run guest code. The code is designed to run on a single processor (on multiprocessor systems) within a `DriverEntry` function, setup VMX operation, redirect to guest execution, break back to the VMM after executing a halt instruction (as the guest), exit VMX operations, and complete the `DriverEntry` function. 
   * [**GuestState**](https://github.com/calware/HV-Playground/tree/GuestState) *\[Forked from master\]* - Adds code to preserve the guest state across VM exits, code to continue the guest execution, and TraceLogging support to enable debug logging from our VMM.
   * [**EPT**](https://github.com/calware/HV-Playground/tree/EPT) *\[Forked from GuestState\]* - Simplistic EPT configuration supporting (only) 4KB guest pages, designed to only virtualize the required guest memory. Complete with memory management helper routines, this branch also demonstrates modifications to the underlying EPT tables (in addition to splitting attacks) to redirect memory pages exposed to the guest.
   * [**EPTIdentity**](https://github.com/calware/HV-Playground/tree/EPTIdentity) *\[Forked from EPT\]* - EPT configuration designed to support 2MB large pages in an guest-to-host identity map (full system memory virtualization). Also demonstrates *EPT splitting* by selectively splitting target 2MB pages to their 4KB equivalents, and then mapping two separate pages for a taget page (depending upon their accesses).
-
-# Incomplete Branches
-  * [EventInjection]() *\[Forked from GuestState\]* - Demonstrates the simulation of VMX instructions outside VMX operation while within VMX operation. This will be done by modifying the behavior of VMX-related in non-root mode, with explanations on how could go about building such a feature in for other instructions which cause non-conditional VM-exits.
+  * [**EventInjection**](https://github.com/calware/HV-Playground/tree/EventInjection) *\[Forked from GuestState\]* - Demonstrates the simulation of VMX instructions outside VMX operation while within VMX operation. This will be done by modifying the behavior of a `VMLAUNCH` instruciton in our guest (simulating non-root mode), with explanations on how could go about building such a feature in for other instructions which cause non-conditional VM-exits.
 
 # Resources
 Below are a list of resources I used when developing the hypervisor seen in this repository (**the master branch**).
