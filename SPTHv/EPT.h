@@ -229,7 +229,7 @@ extern EPT_CACHED_PT g_pCachedPTList[EPT_CACHED_PT_COUNT];
 
 
 
-// "INVEPT — Invalidate Translations Derived from EPT"
+// "INVEPT ï¿½ Invalidate Translations Derived from EPT"
 typedef enum __INVEPT_TYPE
 {
     INVEPT_TYPE_SINGLE_CONTEXT = 1,
@@ -263,14 +263,29 @@ __invept(
 BOOLEAN
 EptBuild();
 
+/*
+ * Initializes a cache of PTs that will be used to replace
+ *  2MB large page PDEs. A cache is primarily used because
+ *  of our need to convert large page PDEs into PDEs mapping
+ *  PTs from within our VMM, which is at an IRQL which won't
+ *  support OS memory mapping routines.
+ */
 VOID
 EptInitializeCache();
 
+// Used to invalidate EPT entries in the current logical processor's TLB
 BOOLEAN
 EptInvalidateTlb(
     CONST INVEPT_TYPE Type
     );
 
+/*
+ * This function allows us to selectively split 2MB large page 
+ *  PDEs into PDEs which point to PTs holding 512 PTEs mapping
+ *  4KB allocations. This preserves the underlying identity
+ *  mapping, and supports using a cache of PTs to allow for
+ *  selective splitting from without our VMM.
+ */
 BOOLEAN
 EptConvertLargePagePde(
     _In_ CONST BOOLEAN UseCache,
@@ -293,6 +308,8 @@ EptConvertLargePagePde(
 BOOLEAN
 EptIdentityMapSystem();
 
+// This simply translates a physical address through the EPT
+//  and into an EPT PTE. 2MB large page PDEs are automatically split.
 BOOLEAN
 EptGetPte(
     _In_ CONST BOOLEAN VmmRequest,

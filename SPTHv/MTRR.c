@@ -99,7 +99,7 @@ MtrrGetMemType(
                              *  register's mask MSR
                              */
 
-                            // Get the sub region memory types—encoded in the mask value
+                            // Get the sub region memory typesï¿½encoded in the mask value
                             fixedMask = __readmsr( fixedEntry.MaskMSR );
 
                             // Get the shift size to access the memory type for this sub-region
@@ -169,7 +169,7 @@ MtrrGetMemType(
              *  I believe to be more restrictive memory types here, and then default to
              *  the most restrictive in the return.
              *
-             * In all liklihood, this is unnecessary, and will only really result in
+             * In all likelihood, this is unnecessary, and will only really result in
              *  the usual check for a portion of our search region lying anywhere in
              *  UC memory; and subsequently defaulting to that memory type.
              *
