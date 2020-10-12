@@ -11,7 +11,6 @@ VMExitHandler()
 
     if ( exitReason.EntryFailure == TRUE )
     {
-        // KdPrint(( "[SPTHv] Unable to perform vm-entry\r\n" ));
         __debugbreak();
         goto __jmp_driverentry_ep;
     }
@@ -19,11 +18,13 @@ VMExitHandler()
     switch ( exitReason.BasicReason )
     {
         case REASON_HLT:
-            // KdPrint(( "[SPTHv] Successfully caught exit via HTL instruction\r\n" ));
+
+            // If we've broken here, this indicates a successful run-through
+            //  the underlying guest software
             __debugbreak();
+
             break;
         default:
-            // KdPrint(( "[SPTHv] Unhandled vm-exit reason; reason = %d\r\n", exitReason.BasicReason ));
             __debugbreak();
             break;
     }
@@ -140,7 +141,11 @@ _SetVMCSHostState(
     __vmx_vmwrite( VMCS_HOST_RSP, HostStack );
     __vmx_vmwrite( VMCS_HOST_RIP, HostEntryPoint );
 
-    // Note: SDM citation needed here to express that the RPL & TI bits are disallowed!
+    /*
+     * Note: "In the selector field for each of CS, SS, DS, ES, FS, GS and TR,
+     *  the RPL (bits 1:0) and the TI flag (bit 2) must be 0"
+     * (See [26.2.3] "Checks on Host Segment and Descriptor-Table Registers")
+     */
     __vmx_vmwrite( VMCS_HOST_CS_SELECTOR, __readcs() & SELECTOR_INDEX_MASK );
     __vmx_vmwrite( VMCS_HOST_SS_SELECTOR, __readss() & SELECTOR_INDEX_MASK );
     __vmx_vmwrite( VMCS_HOST_DS_SELECTOR, __readds() & SELECTOR_INDEX_MASK );
@@ -171,7 +176,8 @@ _SetPinBasedControls()
 
     // ...
 
-    // Fix the control bits (note: no pre-checking on allowed settings here)
+    // Fix the control bits
+    //  (Note: no pre-checking on allowed settings here)
     pinCtrls.All = FixCtrlBits( pinCtrls.All, IA32_VMX_PINBASED_CTRLS, IA32_VMX_TRUE_PINBASED_CTRLS );
 
     __vmx_vmwrite( VMCS_CTRL_PIN_EXEC_CTRLS, pinCtrls.All );
@@ -192,7 +198,8 @@ _SetProcessorPrimaryControls()
     //    Note: by default this will ignore all MSR read/write operations, as no MSRs are specified in our bitmap (zeroed)
     processorPrimaryCtrls.UseMSRBitmaps = 1; 
 
-    // Fix the control bits (note: no pre-checking on allowed settings here)
+    // Fix the control bits
+    //  (Note: no pre-checking on allowed settings here)
     processorPrimaryCtrls.All = FixCtrlBits( processorPrimaryCtrls.All, IA32_VMX_PROCBASED_CTLS, IA32_VMX_TRUE_PROCBASED_CTLS );
 
     __vmx_vmwrite( VMCS_CTRL_PRIMARY_EXEC_CTRLS, processorPrimaryCtrls.All );
@@ -208,8 +215,11 @@ _SetProcessorSecondaryControls()
 
     // ...
 
-    // Fix the control bits (note: no pre-checking on allowed settings here)
-    //    (Note: in the FixCtrlBits function I have included logic to handle the case of processor secondary controls)
+    /*
+     * Fix the control bits
+     *  (Note: no pre-checking on allowed settings here.
+     *  (Additionally, in the FixCtrlBits function I have included logic to handle the case of processor secondary controls)
+     */
     processorSecondaryCtrls.All = FixCtrlBits( processorSecondaryCtrls.All, IA32_VMX_PROCBASED_CTLS2, 0 );
 
     __vmx_vmwrite( VMCS_CTRL_SECONDARY_EXEC_CTRLS, processorSecondaryCtrls.All );
@@ -218,7 +228,7 @@ _SetProcessorSecondaryControls()
 VOID
 _SetExitControls()
 {
-    // [24.9] ""
+    // [24.7] "VM-Exit Control Fields"
 
     VM_EXIT_CTRLS exitCtrls;
     exitCtrls.All = 0;
@@ -226,8 +236,8 @@ _SetExitControls()
     // We want to be in IA-32e mode (our current mode) on VM exits
     exitCtrls.HostAddressSpaceSize = 1;
 
-    // Fix the control bits (note: no pre-checking on allowed settings here)
-    //    (Note: in the FixCtrlBits function I have included logic to handle the case of processor secondary controls)
+    // Fix the control bits
+    //  (Note: no pre-checking on allowed settings here)
     exitCtrls.All = FixCtrlBits( exitCtrls.All, IA32_VMX_EXIT_CTLS, IA32_VMX_TRUE_EXIT_CTLS );
 
     __vmx_vmwrite( VMCS_CTRL_VM_EXIT_CTRLS, exitCtrls.All );
@@ -244,8 +254,8 @@ _SetEntryControls()
     // Want the guest in IA-32e mode on VM entries
     entryCtrls.IA32eModeGuest = 1;
 
-    // Fix the control bits (note: no pre-checking on allowed settings here)
-    //    (Note: in the FixCtrlBits function I have included logic to handle the case of processor secondary controls)
+    // Fix the control bits
+    //  (Note: no pre-checking on allowed settings here)
     entryCtrls.All = FixCtrlBits( entryCtrls.All, IA32_VMX_ENTRY_CTLS, IA32_VMX_TRUE_ENTRY_CTLS );
 
     __vmx_vmwrite( VMCS_CTRL_VM_ENTRY_CTRLS, entryCtrls.All );
@@ -330,7 +340,7 @@ DriverEntry(
      *   interrupt), which isn't enabled in our processor secondary controls, which generates a #UD, and
      *   bugchecks the guest.
      *
-     *  [0] https://github.com/tandasat/HyperPlatform/issues/3#issuecomment-230494046
+     *  [0]: https://github.com/tandasat/HyperPlatform/issues/3#issuecomment-230494046
      */
 
     KeRaiseIrql( HIGH_LEVEL, &PreviousIRQL );
@@ -338,7 +348,7 @@ DriverEntry(
 
 
     // 8. Check feature MSRs for hypervisor system compatibility ([23.7] "Enabling and Entering VMX Operation")
-    //    (per the specification: the lock bit along with either VMXInsideSMX or VMXOutsideSMX must be set; and we only support VMX outside of SMX)
+    //    (Per the specification: the lock bit along with either VMXInsideSMX or VMXOutsideSMX must be set; and we only support VMX outside of SMX)
     featureControl.All = __readmsr( IA32_FEATURE_CONTROL );
     NT_ASSERT( featureControl.Lock == 1 && featureControl.VMXOutisdeSMX == 1 );
 
@@ -374,7 +384,7 @@ DriverEntry(
 
     // 12.2 Configure the host state information ([24.5] "Host-State Area")
     _SetVMCSHostState(
-        (UINT64)g_LPInfo.HostStack.VA + KERNEL_STACK_SIZE, /* - 16 */
+        (UINT64)g_LPInfo.HostStack.VA + KERNEL_STACK_SIZE,
         (UINT64)VMExitHandler
         );
 
@@ -415,6 +425,7 @@ __saved_ep_addr:
 
 
     // 13. Virtualize the LP (if this is successful, it will jump to VMExitHandler)
+    __debugbreak();
     NT_ASSERT( __vmx_vmlaunch() == VMX_OK );
 
 
@@ -428,17 +439,16 @@ __save_state:
         goto __saved_ep_addr;
     }
 
+    __debugbreak();
+
     // Reset GDT/IDT limit to prevent PG bugchecks
-    //    (Per the specification: there is no field for the current host GDT/IDT limits, so the hardware simply sets them to max, [] "")
+    //   (Per the specification: there is no field for the current host GDT/IDT limits, so the hardware simply sets them to max, [] "")
     __lidt( &g_IDTR );
     __lgdt( &g_GDTR );
 
     // Restore CR0/4 states to pre-vmx operation
-    //    (This is dangerous and doesn't account for changes to CR0/4 at IRQLs > DISPATCH_LEVEL which would take precedence over our code)
     __writecr0( g_CR0.All );
     __writecr4( g_CR4.All );
-
-    KdPrint(( "[SPTHv] Successfully performed VMX operation cycle\r\n" ));
 
 
 
@@ -448,6 +458,8 @@ __save_state:
 
     // Restore PASSIVE_LEVEL IRQL
     KeLowerIrql( PreviousIRQL );
+
+    KdPrint(( "[SPTHv] Successfully performed VMX operation cycle\r\n" ));
 
     // Free our allocated data structures
     utlFreeVMXData( &g_LPInfo.VMCS, TRUE );

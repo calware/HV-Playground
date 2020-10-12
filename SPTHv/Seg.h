@@ -3,11 +3,18 @@
 
 #include <wdm.h>
 
+/*
+ * This simply excludes the last three bits, which are disallowed
+ *  in host-state selector fields
+ * (See [26.2.3] "Checks on Host Segment and Descriptor-Table Registers")
+ */
 #define SELECTOR_INDEX_MASK                 0xFFF8
 
+// [3.4.5] "Segment Descriptors"
 #define DESCRIPTOR_TYPE_SYSTEM              0
 #define DESCRIPTOR_TYPE_CODE_DATA           1
 
+// [Table 3-2] "System-Segment and Gate-Descriptor Types"
 #define SYS_SEG_DESC_TYPE_LDT               2
 #define SYS_SEG_DESC_TYPE_TSS_BUSY          11
 #define SYS_SEG_DESC_TYPE_TSS_AVAILABLE     9
@@ -95,8 +102,9 @@ typedef struct _SYSTEM_TABLE_REGISTER
 
 
 //
-// Custom segment intrinsic functions (see "./asm/Seg.asm")
+// External segment intrinsic functions (see "Seg.asm")
 //
+
 extern UINT16 __readcs();
 extern UINT16 __readss();
 extern UINT16 __readds();
@@ -119,6 +127,10 @@ extern SEG_ACCESS_RIGHTS __readar(
     );
 
 
+
+//
+// Local functions
+//
 
 SEG_ACCESS_RIGHTS
 ReadAR(

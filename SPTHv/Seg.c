@@ -30,7 +30,7 @@ __segmentbase(
 	segmentSelector.All = selector;
 
 	// Why lookup null entries if we don't have to
-	//	(Windows 10 kernel LDT null, so this will filter out LDT entries creating a superfluous check on L54)
+	//	(Windows 10 kernel LDT null, so this will filter out LDT entries creating a potentially superfluous check on L56)
 	if ( segmentSelector.Index == 0 )
 	{
 		return 0;
@@ -38,15 +38,16 @@ __segmentbase(
 
 	pGDTE = &pGDT[segmentSelector.Index];
 
-	// Compose the 32-bit base address
+	// Compose the 32-bit base address, which is split into two parts
 	baseAddress = (pGDTE->Base2 << 24) | pGDTE->Base;
-	baseAddress = ((pGDTE->Base2 << 24) | pGDTE->Base) & MAXUINT32;
 
-	// Check if this entry is a system entry (double the size, and has more information)
-	//	Note: others say to ignore LDT entries, or to only account for TSS entries; but I have found no reason
-	//	as for why we should do that in either the SDM or Windows Internals, so I'm leaving this superflous check
-	//	on the GDTE type here until further notice. If you're reading this comment, it means I was either right, or
-	//	we have a potential bad error in the VMCS logic that will potentially cause bugs later :^)
+    /*
+	 * Check if this entry is a system entry (double the size, and has more information)
+	 *	Note: others say to ignore LDT entries, or to only account for TSS entries; but I have found no reason
+	 *	as for why we should do that in either the SDM or Windows Internals, so I'm leaving this superflous check
+	 *	on the GDTE type here until further notice. If you're reading this comment, it means I was either right, or
+	 *	we have a potential bad error in the VMCS logic that will potentially cause bugs later :^)
+     */
 
 	// If this is a system segment descriptor, and it's for either a TSS or LDT, we obtain the full 64-bit base address
 	if ( pGDTE->DescType == DESCRIPTOR_TYPE_SYSTEM
@@ -69,7 +70,8 @@ __segmentbase(
 		// Obtain the 64-bit system segment descriptor
 		pGDTE64 = (PSYS_SEG_DESC)pGDTE;
 
-		// Create the final 64-bit base address (if necessary)
+		// Compose the final 64-bit base address (if necessary)
+        //  by adding the third extension to the base address
 		baseAddress |= ((UINT64)pGDTE64->Base3 << 32);
 	}
 
@@ -105,17 +107,17 @@ ReadAR(
 		 */
 		ar.All = 0;
 		ar.Unusable = TRUE;
-		goto __ep;
 	}
+    else
+    {
+        // This will simply execute a `LAR` instruction with the provided selector
+	    ar = __readar(selector);
 
-	// This will simply execute a `LAR` instruction with the provided selector
-	ar = __readar(selector);
+	    ar.Unusable = FALSE;
+	    ar.Reserved0 = 0;
+	    ar.Reserved1 = 0;
+    }
 
-	ar.Unusable = FALSE;
-	ar.Reserved0 = 0;
-	ar.Reserved1 = 0;
-
-__ep:
 	return ar;
 
 	// See also [26.3.2.2] "Loading Guest Segment Registers and Descriptor-Table Registers"
