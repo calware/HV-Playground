@@ -401,7 +401,7 @@ DriverEntry(
     //    (Note: we're not using this field for the time being, but in testing you may; so it's included here for posterity purposes)
     _SetProcessorSecondaryControls();
     
-    // 12.4 Configure the VM-exit controls ([] "")
+    // 12.4 Configure the VM-exit controls ([24.7] "VM-Exit Control Fields")
     _SetExitControls();
 
     // 12.5 Configure the VM-entry controls ([24.8] "VM-Entry Control Fields")
