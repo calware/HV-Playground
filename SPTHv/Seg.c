@@ -30,7 +30,7 @@ __segmentbase(
     segmentSelector.All = selector;
 
     // Why lookup null entries if we don't have to
-    //    (Windows 10 kernel LDT null, so this will filter out LDT entries creating a potentially superfluous check on L56)
+    //    (The Windows 10 kernel LDT null, so this will filter out LDT entries creating a potentially superfluous check on L55)
     if ( segmentSelector.Index == 0 )
     {
         return 0;
@@ -44,15 +44,15 @@ __segmentbase(
     /*
      * Check if this entry is a system entry (double the size, and has more information)
      *    Note: others say to ignore LDT entries, or to only account for TSS entries; but I have found no reason
-     *    as for why we should do that in either the SDM or Windows Internals, so I'm leaving this superflous check
+     *    as for why we should do that in the SDM, so I'm leaving this superflous check
      *    on the GDTE type here until further notice. If you're reading this comment, it means I was either right, or
-     *    we have a potential bad error in the VMCS logic that will potentially cause bugs later :^)
+     *    we have a bad error in the VMCS logic that will potentially cause bugs later :^)
      */
 
     // If this is a system segment descriptor, and it's for either a TSS or LDT, we obtain the full 64-bit base address
     if ( pGDTE->DescType == DESCRIPTOR_TYPE_SYSTEM
-        && ((pGDTE->Type == SYS_SEG_DESC_TYPE_TSS_BUSY || pGDTE->Type == SYS_SEG_DESC_TYPE_TSS_AVAILABLE) // CHANGE HERE!
-            || pGDTE->Type == SYS_SEG_DESC_TYPE_LDT))
+        && ((pGDTE->Type == SYS_SEG_DESC_TYPE_TSS_BUSY || pGDTE->Type == SYS_SEG_DESC_TYPE_TSS_AVAILABLE)
+        || pGDTE->Type == SYS_SEG_DESC_TYPE_LDT) )
     {
         /*
          *  In IA-32e mode, there are two types of system descriptors: system-segment descriptors and gate descriptors.[0]
@@ -103,7 +103,7 @@ ReadAR(
         /*
          *  We get here because the kernel segments won't ever index via the LDT (always zero), which means the TI
          *  bits will always be zero (indicating a GDT index), the RPL bits will always be zero, and the index being
-         *  clear signifies a null segment selector; which should be indicated via setting the unusable bit (16)
+         *  clear signifies a null segment selector; which should be indicated via setting the unusable bit
          */
         ar.All = 0;
         ar.Unusable = TRUE;
